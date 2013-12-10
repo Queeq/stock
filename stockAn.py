@@ -16,7 +16,6 @@ mp.use('agg')
 import matplotlib.pyplot as plt
 
 # Classifying resolutions for stock data
-#resolutions_conf = {'15m': 900, '30m': 1800, '1h': 3600, '2h': 7200}
 resolutions_conf = {'30m': 30*60, '1h': 60*60, '2h': 2*60*60}
 
 # Classifying average periods
@@ -198,11 +197,6 @@ class MovingAverages(object):
             # Add data from numpy convolution result list to arrays
             self.ma['simple'][period].extend(np.convolve(data, weights_sma, mode='full')[:datalen])
             self.ma['exp'][period].extend(np.convolve(data, weights_ema, mode='full')[:datalen])
-
-            # Copy n-th element to n first elements
-            #for i in range(period):
-            #    self.ma['simple'][period][i] = self.ma['simple'][period][period]
-            #    self.ma['exp'][period][i] = self.ma['exp'][period][period]
 
             # Cut first elements as they are out of range
             self.ma['simple'][period] = self.ma['simple'][period][max(av_periods):]
@@ -408,10 +402,6 @@ for res_name, res_value in resolutions_conf.items():
 # No need to keep all data in memory now
 del full_data
 
-
-# TODO: Recode MA class to delete first n elements
-#	Explicitly delete max(av_periods) number of elements from discrete_data
-#	for indices of data and MA classes to be the same for same elements
 
 av = {}
 for res_name in resolutions_conf.keys():
