@@ -373,7 +373,14 @@ for row in csv.reader(datafile):
 
 datafile.close()
 
-print ('Data read\n')
+print ('Data read')
+
+actual_endtime = full_data.time[-1]
+if actual_endtime < endtime:
+    print ("Last data point is at %s" % dt.datetime.fromtimestamp(actual_endtime))
+    timeperiod_str = "%s - %s" % (dt.datetime.fromtimestamp(starttime), dt.datetime.fromtimestamp(actual_endtime))
+
+print ("\n")
 
 # Get full_data arrays' size
 fulldata_len = len(full_data.time)
