@@ -2,6 +2,8 @@
 
 import sys
 import argparse
+import configparser
+import re
 
 import time as t
 import csv
@@ -15,15 +17,32 @@ import matplotlib as mp
 mp.use('agg')
 import matplotlib.pyplot as plt
 
-# Classifying resolutions for stock data
-resolutions_conf = {'30m': 30*60, '1h': 60*60, '2h': 2*60*60}
+# Get configuration from ini
+config = configparser.ConfigParser()
+config.read('config.ini')
+resolutions = config['stockAn']['resolutions']
+av_range = config['stockAn']['average_periods']
 
-# Classifying average periods
-av_periods = range(1,50)
+# Dictionary for resolutions name:seconds
+resolutions_conf = {}
+# Adapt resolutions config for use by script
+regex = re.compile("(\d+)([mh])")
+for res in resolutions.split(','):
+    m = regex.match(res)
+    amount = int(m.group(1)) # number
+    prefix = m.group(2) # mins or hours
+    if prefix == 'm':
+        multiplier = 60
+    elif prefix == 'h':
+        multiplier = 60*60
+    resolutions_conf[res] = amount * multiplier
+
+# Parse average periods
+av_min_period, av_max_period = av_range.split('-')
+av_periods = range(int(av_min_period), int(av_max_period))
 
 # List of all available period pairs
 av_pairs = list(itertools.combinations(av_periods, 2))
-
 
 # Parse arguments
 aparser = argparse.ArgumentParser()
