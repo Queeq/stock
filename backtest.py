@@ -3,7 +3,6 @@
 import sys
 import argparse
 import configparser
-import re
 
 import time as t
 import csv
@@ -26,18 +25,7 @@ resolutions = config['backtest']['resolutions']
 av_range = config['backtest']['average_periods']
 
 # Dictionary for resolutions name:seconds
-resolutions_conf = {}
-# Adapt resolutions config for use by script
-regex = re.compile("(\d+)([mh])")
-for res in resolutions.split(','):
-    m = regex.match(res)
-    amount = int(m.group(1)) # number
-    suffix = m.group(2) # mins or hours
-    if suffix == 'm':
-        multiplier = 60
-    elif suffix == 'h':
-        multiplier = 60*60
-    resolutions_conf[res] = amount * multiplier
+resolutions_conf = resolutions_convert(resolutions)
 
 # Parse average periods
 av_min_period, av_max_period = av_range.split('-')

@@ -1,22 +1,18 @@
 #!/usr/bin/python3
 
-import os.path
 import configparser
+import datetime as dt
 
-# Get parent dir path
-top_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
-# Get config path
-config_path = os.path.join(top_dir, "config.ini")
+from common.basic import *
 
 # Get configuration from ini
 config = configparser.ConfigParser()
-config.read(config_path)
+config.read('config.ini')
 fast = int(config['bot']['fast'])
 slow = int(config['bot']['slow'])
 stop_loss = float(config['bot']['stop_loss'])
-resolution = config['bot']['resolution']
-
-print(fast, slow, stop_loss, resolution)
+res_name = config['bot']['resolution']
+res_value = resolutions_convert(res_name)[res_name]
 
 # Def buy/sell decision
 
@@ -28,6 +24,11 @@ print(fast, slow, stop_loss, resolution)
 
 # Build database for last trades to calculate on
     # Get data from bicoincharts.com and then those trades which are in between from BTC-e API
+
+# Calculate start time for building average
+now = int(dt.datetime.now().strftime('%s'))
+start_time = now - res_value * slow
+print(dt.datetime.fromtimestamp(start_time))
 
 # Loop
 
