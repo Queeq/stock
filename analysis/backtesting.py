@@ -1,97 +1,9 @@
-#!/usr/bin/python3
-
-import sys
-import argparse
-import configparser
-import re
-
-import time as t
-import csv
-import datetime as dt
-
 import numpy as np
 import array
-import itertools
 
-import matplotlib as mp
-mp.use('agg')
-import matplotlib.pyplot as plt
+from common.basic import *
 
-
-# Get configuration from ini
-config = configparser.ConfigParser()
-config.read('config.ini')
-resolutions = config['stockAn']['resolutions']
-av_range = config['stockAn']['average_periods']
-
-# Dictionary for resolutions name:seconds
-resolutions_conf = {}
-# Adapt resolutions config for use by script
-regex = re.compile("(\d+)([mh])")
-for res in resolutions.split(','):
-    m = regex.match(res)
-    amount = int(m.group(1)) # number
-    suffix = m.group(2) # mins or hours
-    if suffix == 'm':
-        multiplier = 60
-    elif suffix == 'h':
-        multiplier = 60*60
-    resolutions_conf[res] = amount * multiplier
-
-# Parse average periods
-av_min_period, av_max_period = av_range.split('-')
-av_periods = range(int(av_min_period), int(av_max_period))
-
-# List of all available period pairs
-av_pairs = list(itertools.combinations(av_periods, 2))
-
-# Parse arguments
-aparser = argparse.ArgumentParser()
-aparser.add_argument('-i', '--input', dest='datafile_path', required=True, help='CSV file to get data from')
-aparser.add_argument('-f', '--fee', dest='fee', help='Stock fee. Default: 0.002')
-aparser.add_argument('-p', '--period', dest='timedelta', nargs=2, metavar=('INTEGER', '{d|w|m|y}'), help='From what time ago to start analysis. Value with day/week/month/year suffix')
-aparser.add_argument('-s', '--start', dest='startdate', help='Date to start analysis from. Format: dd.mm.yy')
-aparser.add_argument('-e', '--end', dest='enddate', help='Date to finish analysis at. Format: dd.mm.yy')
-aparser.add_argument('--no-plot', dest='do_plot', action='store_false', help='Do not draw plots, just show text stats')
-aparser.set_defaults(do_plot=True, fee=0.002)
-args = aparser.parse_args()
-
-now = int(dt.datetime.now().strftime('%s'))
-
-# Decode symbol from period argument
-period_decode = {'d': 24*3600, 'w': 7*24*3600, 'm': 30*24*3600, 'y': 365*24*3600}
-
-# Time period
-if args.timedelta:
-    starttime = now - int(args.timedelta[0]) * period_decode[args.timedelta[1]]
-elif args.startdate:
-    start = dt.datetime.strptime(args.startdate, '%d.%m.%y')
-    starttime = int(start.strftime('%s'))
-else:
-    starttime = 0
-
-if args.enddate:
-    end = dt.datetime.strptime(args.enddate, '%d.%m.%y')
-    endtime = int(end.strftime('%s'))
-else:
-    endtime = now
-
-
-# Progress calculation and printing
-class Progress(object):
-    def __init__(self, maximum):
-        self.maximum = maximum
-        self.last_percent = 0
-    def show(self, current):
-        percent = round(current/self.maximum * 100)
-        if percent > self.last_percent:
-            self.last_percent = percent
-            print ("%d%% complete \r" % percent, end="")
-            if percent == 100:
-                print ("")
-
-
-# Make a time:price class
+# Time:price class
 class Data(object):
     """
     Structure:
@@ -181,21 +93,21 @@ class MovingAverages(object):
         self.ma{type}
         Values are dictionaries of L2
 
-    L2: Dictionary of periods from global list av_periods as keys
+    L2: Dictionary of periods from av_periods list as keys
         self.ma{type}{period}
         Values are arrays of averages. Len = len of dataobject of given resolution
 
     L3: Elements of the array
 
     """
-    def __init__(self, res):
+    def __init__(self, res, data_obj, av_periods):
         self.resolution = res
 
-        self.ma = {'simple': {}, 'exp': {}}
-
         # Price array.array from data object of same resolution
-        data = discrete_data[self.resolution].price
+        data = data_obj.price
         datalen = len(data)
+
+        self.ma = {'simple': {}, 'exp': {}}
 
         '''
         For all periods, create lists of arrays
@@ -225,8 +137,8 @@ class MovingAverages(object):
             prog.show(period)
 
         # Cut first elements for Data obj of given resolution as well
-        discrete_data[self.resolution].time = discrete_data[self.resolution].time[max(av_periods):]
-        discrete_data[self.resolution].price = discrete_data[self.resolution].price[max(av_periods):]
+        data_obj.time = data_obj.time[max(av_periods):]
+        data_obj.price = data_obj.price[max(av_periods):]
 
 
 class AveragesAnalytics(object):
@@ -256,12 +168,12 @@ class AveragesAnalytics(object):
         <name>{ma_type}[fast_period][slow_period] - for end_sum and profit
 
     """
-    def __init__(self, res):
+    def __init__(self, res, fee, av_obj, data_obj, av_periods, av_pairs):
         self.resolution = res
-        self.fee = float(args.fee)
+        self.fee = float(fee)
         self.startsum = 100
-        self.avdata = av[res]
-        self.data = discrete_data[res]
+        self.avdata = av_obj
+        self.data = data_obj
 
         self.ma_variants = ('simple', 'exp')
         self.current_sum = {}
@@ -325,6 +237,7 @@ class AveragesAnalytics(object):
                         self.end_sum[ma][fast_period][slow_period] = self.current_sum[ma][av_pair][0]
                         self.transactions[ma][av_pair] += 1
 
+
                 # When buying simulation for this pair is finished - record end_sum and profit
                 self.profit[ma][fast_period][slow_period] = (self.end_sum[ma][fast_period][slow_period] - self.startsum) * 100 / self.startsum
                 prog.show(pair_number)
@@ -363,138 +276,4 @@ class AveragesAnalytics(object):
             #print ("Sell %.4f btc for %.4f usd; %.2f" % (current_sum[1], current_sum[0], price))
             # Set currency 2 amount to 0
             current_sum[1] = 0
-
-
-"""
-Main program start
-"""
-
-datafile = open(args.datafile_path, newline='')
-timeperiod_str = "%s - %s" % (dt.datetime.fromtimestamp(starttime), dt.datetime.fromtimestamp(endtime))
-
-# Read all data from csv file to data class
-rowcount = 0
-full_data = Data()
-
-# Import data from n earlier periods too to calculate correct averages for the start of interval
-lookback_time = starttime - (max(resolutions_conf.values()) * max(av_periods))
-
-print ("Importing data for %s" % timeperiod_str)
-print ("Lookback time: %s" % dt.datetime.fromtimestamp(lookback_time))
-
-for row in csv.reader(datafile):
-    if lookback_time < int(row[0]):
-        full_data.append(row[0], row[1])
-        rowcount += 1
-        if rowcount % 100000 == 0:
-            print("Row: %s" % rowcount)
-        if int(row[0]) >= endtime:
-            break
-
-datafile.close()
-
-print ('Data read')
-
-actual_endtime = full_data.time[-1]
-if actual_endtime < endtime:
-    print ("Last data point is at %s" % dt.datetime.fromtimestamp(actual_endtime))
-    timeperiod_str = "%s - %s" % (dt.datetime.fromtimestamp(starttime), dt.datetime.fromtimestamp(actual_endtime))
-
-print ("\n")
-
-# Get full_data arrays' size
-fulldata_len = len(full_data.time)
-
-# Init dictionary for data objects
-discrete_data = {}
-
-for res_name, res_value in resolutions_conf.items():
-    print ("Filling %s data object" % res_name)
-
-    # Create data objects for every configured resolution and put them in a dict
-    discrete_data[res_name] = Data(res_value)
-
-    prog = Progress(fulldata_len)
-
-    # Determine lookback time for current resolution
-    lookback_time = starttime - (res_value * max(av_periods))
-    print ("Lookback time for %s is %s" % (res_name, dt.datetime.fromtimestamp(lookback_time)))
-
-    # Fill in discrete data objects
-    for index in range(fulldata_len):
-        if full_data.read(index)['time'] >= lookback_time:
-            discrete_data[res_name].append(full_data.read(index)['time'], full_data.read(index)['price'])
-        prog.show(index)
-
-# No need to keep all data in memory now
-del full_data
-
-
-av = {}
-for res_name in resolutions_conf.keys():
-    print ("Computing %s averages object" % res_name)
-    # Create averages objects for every configured resolution and put them in a dict
-    av[res_name] = MovingAverages(res_name)
-
-#p_res="1h"
-## Testing data
-#for index, time in enumerate(discrete_data[p_res].time):
-#    if index < 20 or index > len(discrete_data[p_res].time) - 20:
-#        print (index, time, "p: %.2f\tav_3: %.2f\tav_5: %.2f" % (discrete_data[p_res].price[index], av[p_res].ma['simple'][3][index], av[p_res].ma['simple'][5][index]))
-
-analytics = {}
-for res_name in resolutions_conf.keys():
-    analytics[res_name] = AveragesAnalytics(res_name)
-    print ("")
-
-if args.do_plot:
-
-    # Find absolute profit min and max
-    abs_profit_min = min(min(val) for val in [profit_dict.values() for profit_dict in [an_obj.minimum_profit for an_obj in analytics.values()]])
-    abs_profit_max = max(max(val) for val in [profit_dict.values() for profit_dict in [an_obj.maximum_profit for an_obj in analytics.values()]])
-
-    # Separate figure with one column for every resolution
-    plot_columns = 2
-    # One row for SMA, second for EMA
-    plot_rows = 1
-
-    # Calculate dpi and font size based on grapsh size
-    dpi = max(av_periods) * 8
-    fontsize = 800 / dpi
-
-    for res_index, (res_name, res_value) in enumerate(resolutions_conf.items()):
-
-        fig = plt.figure(figsize=(10 * plot_columns, 6 * plot_rows))
-        plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
-
-        for type_index, ma_type in enumerate(('simple', 'exp')):
-            print ("Building %s '%s' subplot" % (res_name, ma_type))
-            plot_data = analytics[res_name].profit[ma_type]
-            plot_mask = np.ma.getmaskarray(plot_data)
-            min_profit = analytics[res_name].minimum_profit[ma_type]
-            max_profit = analytics[res_name].maximum_profit[ma_type]
-
-            plt.subplot2grid((plot_rows, plot_columns), (0, type_index))
-            plt.title("%s %s %s\nMin: %.2f Max: %.2f" % (timeperiod_str, res_name, ma_type, min_profit, max_profit))
-            for (x, y), value in np.ndenumerate(plot_data):
-                if plot_mask[x, y] == False:
-                    plt.text(x + 0.5, y + 0.5, '%.2f%%\n(%d, %d)' % (value, x, y), horizontalalignment='center', verticalalignment='center', fontsize=fontsize)
-
-            heatmap = plt.pcolormesh(plot_data.T, cmap=plt.cm.RdYlGn, vmin=abs_profit_min, vmax=abs_profit_max)
-
-            plt.colorbar(heatmap)
-            plt.gca().autoscale_view('tight')
-            # Turn off axis
-            plt.gca().axison = False
-
-        # Free up memory of plotted object
-        del av[res_name]
-
-        print ("Composing figure for %s resolution" % res_name)
-        plt.tight_layout()
-        plt.savefig('plot-%s.png' % res_name, dpi=dpi, bbox_inches='tight')
-        del fig
-
-else:
-    print ("Plotting skipped")
 
