@@ -17,6 +17,7 @@ import matplotlib as mp
 mp.use('agg')
 import matplotlib.pyplot as plt
 
+
 # Get configuration from ini
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -30,10 +31,10 @@ regex = re.compile("(\d+)([mh])")
 for res in resolutions.split(','):
     m = regex.match(res)
     amount = int(m.group(1)) # number
-    prefix = m.group(2) # mins or hours
-    if prefix == 'm':
+    suffix = m.group(2) # mins or hours
+    if suffix == 'm':
         multiplier = 60
-    elif prefix == 'h':
+    elif suffix == 'h':
         multiplier = 60*60
     resolutions_conf[res] = amount * multiplier
 

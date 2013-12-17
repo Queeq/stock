@@ -1,7 +1,22 @@
 #!/usr/bin/python3
 
-# Get config
-    # short-long, tick size, stop-loss
+import os.path
+import configparser
+
+# Get parent dir path
+top_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+# Get config path
+config_path = os.path.join(top_dir, "config.ini")
+
+# Get configuration from ini
+config = configparser.ConfigParser()
+config.read(config_path)
+fast = int(config['bot']['fast'])
+slow = int(config['bot']['slow'])
+stop_loss = float(config['bot']['stop_loss'])
+resolution = config['bot']['resolution']
+
+print(fast, slow, stop_loss, resolution)
 
 # Def buy/sell decision
 
