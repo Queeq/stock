@@ -4,6 +4,8 @@ import configparser
 import datetime as dt
 
 from common.basic import *
+from common import datadownload as dd
+from analysis.analysis import *
 
 # Get configuration from ini
 config = configparser.ConfigParser()
@@ -28,8 +30,18 @@ res_value = resolutions_convert(res_name)[res_name]
 # Calculate start time for building average
 now = now()
 start_time = now - res_value * slow
-print(dt.datetime.fromtimestamp(start_time))
+print("Lookback time:", dt.datetime.fromtimestamp(start_time))
 
+# Fill in initial data from bitcoincharts.com
+working_dataset = Data(res_value)
+new_data, last_timestamp = dd.btccharts(start_time)
+for value in new_data:
+    time = value.split(',')[0]
+    price = value.split(',')[1]
+    working_dataset.append(time, price)
+
+for i, time in enumerate(working_dataset.time):
+    print (dt.datetime.fromtimestamp(time), working_dataset.price[i])
 # Loop
 
     # Get latest trades and update DB
