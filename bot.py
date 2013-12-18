@@ -3,6 +3,9 @@
 import configparser
 import datetime as dt
 from time import sleep
+from sys import exit
+
+import btceapi
 
 from common.basic import *
 from common import datadownload as dd
@@ -17,6 +20,7 @@ stop_loss = float(config['bot']['stop_loss'])
 res_name = config['bot']['resolution']
 res_value = resolutions_convert(res_name)[res_name]
 
+pair = 'btc_usd'
 # Def buy/sell decision
 
 # Def buy/sell simulation
@@ -38,12 +42,23 @@ for value in new_data:
     price = value.split(',')[1]
     working_dataset.append(time, price)
 
+# Explicitly update dataset with last values
+working_dataset.update(time, price)
+
 for i, time in enumerate(working_dataset.time):
     print (dt.datetime.fromtimestamp(time), working_dataset.price[i])
+
 # Loop
 while True:
     # Get latest trades and update DB
+    print("Getting last trades")
+    last_trades = btceapi.getTradeHistory(pair, count=2)
+    for t in last_trades:
+        time = dt_timestamp(t.date)
+        working_dataset.update(time, t.price)
 
+    for i, time in enumerate(working_dataset.time):
+        print (dt.datetime.fromtimestamp(time), working_dataset.price[i])
     # Calculate averages
 
     # Run decision function

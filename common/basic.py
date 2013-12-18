@@ -19,6 +19,9 @@ class Progress(object):
 def now():
     return int(dt.datetime.now().strftime('%s'))
 
+# Return timestamp of datetime object
+def dt_timestamp(dt_obj):
+    return int(dt_obj.strftime('%s'))
 
 # Function to convert resolution from word to seconds
 # Returns dict like { 5m: 300, ... }

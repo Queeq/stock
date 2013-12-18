@@ -23,6 +23,7 @@ class Data(object):
 
         self.resolution = resolution # Accepting only closing price of such intervals (e.g. 5 min, 30 min, 1h), in seconds
         self.append_tries = 0
+        self.update_count = 0
 
     def set_interval_end(self, time):
         # If resolution 0 - let every line be written
@@ -45,7 +46,6 @@ class Data(object):
     def append(self, time, price):
         time = int(time)
         price = float(price)
-        index = len(self.time)
 
         # Put first line into dictionary and calculate first interval end
         if self.append_tries == 0:
@@ -76,6 +76,36 @@ class Data(object):
 
         else:
             self.last_line = {'time': time, 'price': price}
+
+    def update(self, time, price):
+        """ Overwrite last values or shift all data
+            by one in case resolution border is crossed.
+            Used for realtime updates """
+        time = int(time)
+        price = float(price)
+
+        if time - self.interval_end >= 0:
+            # Remove first element if inteval end passed
+            element_n = 0
+        else:
+            # Remove last element if inteval end not passed
+            element_n = -1
+
+        # If arrived data is newer - write
+        if time > self.time[-1]:
+            # Remove if this is not the first update
+            if self.update_count > 0:
+                self.time.pop(element_n)
+                self.price.pop(element_n)
+
+            # And write new value
+            self.time.append(time)
+            self.price.append(price)
+            # Update end of interval
+            self.set_interval_end(time)
+            self.update_count += 1
+        else:
+            pass
 
     def read(self, index):
         output = {'time': self.time[index], 'price': self.price[index]}
