@@ -6,6 +6,9 @@ import sys
 import urllib.request
 import datetime as dt
 
+# Own package imports
+from common import datadownload
+
 """
 This script gets the last data from bitcoincharts.com
 and appends it to existing CSV file from the same site
@@ -24,7 +27,7 @@ with open(args.datafile_path, 'rb') as f:
         print("Error: file is empty.")
         sys.exit(1)
 
-    # Read and split into lines
+    # Read from the end and split into lines
     f.seek(-1*offset, os.SEEK_END)
     raw_data = f.read().decode()
     lines = raw_data.split('\n')
@@ -33,12 +36,7 @@ with open(args.datafile_path, 'rb') as f:
     last_timestamp = int(last_line.split(',')[0])
     print("Last available point is at %s" % dt.datetime.fromtimestamp(last_timestamp))
 
-# Get latest data from Bitcoincharts
-btcc_data = urllib.request.urlopen("http://api.bitcoincharts.com/v1/trades.csv?symbol=btceUSD&start=%d" % last_timestamp)
-
-# Form data list of all lines except the first one
-new_data = btcc_data.read().decode().split('\n')[1:]
-newest_timestamp = int(new_data[-1].split(',')[0])
+new_data, newest_timestamp = datadownload.btccharts(last_timestamp)
 
 # Append data to file
 print("Appending %s lines to file. Last point is at %s" % (len(new_data), dt.datetime.fromtimestamp(newest_timestamp)))

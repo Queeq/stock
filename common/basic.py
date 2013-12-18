@@ -1,3 +1,4 @@
+import datetime as dt
 import re
 
 # Progress calculation and printing
@@ -12,6 +13,11 @@ class Progress(object):
             print ("%d%% complete \r" % percent, end="")
             if percent == 100:
                 print ("")
+
+
+# Return current time timestamp
+def now():
+    return int(dt.datetime.now().strftime('%s'))
 
 
 # Function to convert resolution from word to seconds

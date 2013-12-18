@@ -26,7 +26,7 @@ res_value = resolutions_convert(res_name)[res_name]
     # Get data from bicoincharts.com and then those trades which are in between from BTC-e API
 
 # Calculate start time for building average
-now = int(dt.datetime.now().strftime('%s'))
+now = now()
 start_time = now - res_value * slow
 print(dt.datetime.fromtimestamp(start_time))
 
