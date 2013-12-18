@@ -2,6 +2,7 @@
 
 import configparser
 import datetime as dt
+from time import sleep
 
 from common.basic import *
 from common import datadownload as dd
@@ -24,9 +25,6 @@ res_value = resolutions_convert(res_name)[res_name]
 # Def real buy/sell
 
 
-# Build database for last trades to calculate on
-    # Get data from bicoincharts.com and then those trades which are in between from BTC-e API
-
 # Calculate start time for building average
 now = now()
 start_time = now - res_value * slow
@@ -43,7 +41,7 @@ for value in new_data:
 for i, time in enumerate(working_dataset.time):
     print (dt.datetime.fromtimestamp(time), working_dataset.price[i])
 # Loop
-
+while True:
     # Get latest trades and update DB
 
     # Calculate averages
@@ -53,4 +51,5 @@ for i, time in enumerate(working_dataset.time):
     # Buy/sell sim or real based on config
 
     # Log operation
+    sleep(10)
 
