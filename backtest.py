@@ -15,7 +15,7 @@ import matplotlib as mp
 mp.use('agg')
 import matplotlib.pyplot as plt
 
-from analysis.backtesting import *
+from analysis.analysis import *
 from common.basic import *
 
 # Get configuration from ini
