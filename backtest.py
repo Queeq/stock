@@ -134,11 +134,16 @@ for res_name in resolutions_conf.keys():
     # Create averages objects for every configured resolution and put them in a dict
     av[res_name] = MovingAverages(discrete_data[res_name], av_periods)
 
-#p_res="1h"
-## Testing data
-#for index, time in enumerate(discrete_data[p_res].time):
-#    if index < 20 or index > len(discrete_data[p_res].time) - 20:
-#        print (index, time, "p: %.2f\tav_3: %.2f\tav_5: %.2f" % (discrete_data[p_res].price[index], av[p_res].ma['simple'][3][index], av[p_res].ma['simple'][5][index]))
+'''
+p_res="1h"
+# Testing data
+for index, time in enumerate(discrete_data[p_res].time):
+    if index < 20 or index > len(discrete_data[p_res].time) - 20:
+        print (index, dt.datetime.fromtimestamp(time), "p: %.2f\ts_3: %.2f\te_3: %.2f" %
+            (discrete_data[p_res].price[index],
+            av[p_res].ma['simple'][3][index],
+            av[p_res].ma['exp'][3][index]))
+'''
 
 analytics = {}
 for res_name in resolutions_conf.keys():

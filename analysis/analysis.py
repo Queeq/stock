@@ -155,6 +155,7 @@ class MovingAverages(object):
 
             weights_sma /= weights_sma.sum()
             weights_ema /= weights_ema.sum()
+            weights_ema = weights_ema[::-1]
 
             # Add data from numpy convolution result list to arrays
             self.ma['simple'][period].extend(np.convolve(data, weights_sma, mode='full')[:datalen])
