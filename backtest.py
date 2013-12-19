@@ -132,7 +132,7 @@ av = {}
 for res_name in resolutions_conf.keys():
     print ("Computing %s averages object" % res_name)
     # Create averages objects for every configured resolution and put them in a dict
-    av[res_name] = MovingAverages(res_name, discrete_data[res_name], av_periods)
+    av[res_name] = MovingAverages(discrete_data[res_name], av_periods)
 
 #p_res="1h"
 ## Testing data

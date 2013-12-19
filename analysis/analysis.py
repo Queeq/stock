@@ -130,9 +130,7 @@ class MovingAverages(object):
     L3: Elements of the array
 
     """
-    def __init__(self, res, data_obj, av_periods):
-        self.resolution = res
-
+    def __init__(self, data_obj, av_periods, realtime=False):
         # Price array.array from data object of same resolution
         data = data_obj.price
         datalen = len(data)
@@ -144,7 +142,9 @@ class MovingAverages(object):
         and fill these arrays with calculated averages
         '''
 
-        prog = Progress(max(av_periods))
+        if not realtime:
+            prog = Progress(max(av_periods))
+
         for period in av_periods:
             # Create dictionaries of arrays
             self.ma['simple'][period] = array.array('d') # Simple moving average
@@ -160,15 +160,20 @@ class MovingAverages(object):
             self.ma['simple'][period].extend(np.convolve(data, weights_sma, mode='full')[:datalen])
             self.ma['exp'][period].extend(np.convolve(data, weights_ema, mode='full')[:datalen])
 
-            # Cut first elements as they are out of range
-            self.ma['simple'][period] = self.ma['simple'][period][max(av_periods):]
-            self.ma['exp'][period] = self.ma['exp'][period][max(av_periods):]
+            # If this is not one-time backtesting generation
+            if not realtime:
+                # Cut first elements as they are out of range
+                self.ma['simple'][period] = self.ma['simple'][period][max(av_periods):]
+                self.ma['exp'][period] = self.ma['exp'][period][max(av_periods):]
 
-            prog.show(period)
+                prog.show(period)
 
-        # Cut first elements for Data obj of given resolution as well
-        data_obj.time = data_obj.time[max(av_periods):]
-        data_obj.price = data_obj.price[max(av_periods):]
+        # Loop end
+
+        if not realtime:
+            # Cut first elements for Data obj of given resolution as well
+            data_obj.time = data_obj.time[max(av_periods):]
+            data_obj.price = data_obj.price[max(av_periods):]
 
 
 class AveragesAnalytics(object):

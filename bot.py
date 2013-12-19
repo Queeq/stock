@@ -51,15 +51,18 @@ for i, time in enumerate(working_dataset.time):
 # Loop
 while True:
     # Get latest trades and update DB
-    print("Getting last trades")
     last_trades = btceapi.getTradeHistory(pair, count=2)
     for t in last_trades:
         time = dt_timestamp(t.date)
         working_dataset.update(time, t.price)
 
-    for i, time in enumerate(working_dataset.time):
-        print (dt.datetime.fromtimestamp(time), working_dataset.price[i])
-    # Calculate averages
+    # Calculate averages based on working dataset
+    mas = MovingAverages(working_dataset, (fast, slow), realtime=True)
+
+    print (dt.datetime.fromtimestamp(working_dataset.time[-1]), working_dataset.price[-1],
+        "\tSimple fast: %.2f slow: %.2f Exp fast: %.2f slow: %.2f"
+        % (mas.ma['simple'][fast][-1], mas.ma['simple'][slow][-1],
+        mas.ma['exp'][fast][-1], mas.ma['exp'][slow][-1]))
 
     # Run decision function
 
