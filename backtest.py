@@ -201,3 +201,17 @@ if args.do_plot:
 else:
     print ("Plotting skipped")
 
+# Print stats to file
+for res_name in resolutions_conf.keys():
+    wr_stats = WriteStats('stats-%s.txt' % res_name)
+
+    for ma in ('simple', 'exp'):
+        print("Writing stats for", res_name, ma)
+        prog = Progress(len(av_pairs))
+
+        for i, pair in enumerate(av_pairs):
+            wr_stats.append(analytics[res_name], res_name, ma, pair)
+            prog.show(i)
+
+    del wr_stats
+

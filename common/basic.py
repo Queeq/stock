@@ -14,6 +14,50 @@ class Progress(object):
             if percent == 100:
                 print ("")
 
+class WriteStats(object):
+    def __init__(self, statsfile):
+        # Erase file
+        f = open(statsfile, 'w')
+        f.close()
+
+        # Open to append
+        self.f = open(statsfile, 'a')
+
+    def append(self, analytics_obj, res_name, ma, pair):
+        data = """\
+==== %s %s %s ====
+Pair profitability:	%.2f%%
+Biggest win:		%.2f%%
+Biggest loss:		%.2f%%
+Sum on won trades:	%.2f
+Sum on lost trades:	%.2f
+Number of wins:		%d
+Number of losts:	%d
+Max consecutive wins:	%d
+Max consecutive losts:	%d
+Max consecutive profit:	%.2f%%
+Max consecutive loss:	%.2f%%
+
+""" % (
+            res_name, ma, pair,
+            analytics_obj.profit[ma][pair[0]][pair[1]],
+            analytics_obj.biggest_win[ma][pair],
+            analytics_obj.biggest_loss[ma][pair],
+            analytics_obj.won_trades_sum[ma][pair],
+            analytics_obj.lost_trades_sum[ma][pair],
+            analytics_obj.won_trades_num[ma][pair],
+            analytics_obj.lost_trades_num[ma][pair],
+            analytics_obj.max_consecutive_wins[ma][pair],
+            analytics_obj.max_consecutive_losts[ma][pair],
+            analytics_obj.max_consecutive_profit[ma][pair],
+            analytics_obj.max_consecutive_loss[ma][pair]
+            )
+
+        self.f.write(data)
+
+    def __del__(self):
+        self.f.close()
+
 
 # Return current time timestamp
 def now():

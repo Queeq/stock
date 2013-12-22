@@ -1,4 +1,5 @@
 plot*
+stats*
 example-plots/
 *.pyc
 __pycache__

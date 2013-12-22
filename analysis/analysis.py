@@ -197,11 +197,28 @@ class AveragesAnalytics(object):
         Value is a dictionary of L2 or a variable of L1
         <name>{ma_type}{av_pair_list}
 
-    L2: Dictionary of average periods pair list as a key (eg. (1, 2), (1, 3) etc.)
+    L2: Dictionary of average periods, pair list as a key (eg. (1, 2), (1, 3) etc.)
         Values are actual data
-        <name>{ma_type}{av_pair_list}
+        <name>{ma_type}{av_pair_list} - for results of stats() function:
+            biggest_win
+            biggest_loss
+            won_trades_sum
+            lost_trades_sum
+            won_trades_num
+            lost_trades_num
+            max_consecutive_wins
+            max_consecutive_losts
+            max_consecutive_profit
+            max_consecutive_loss
+
+            last_buy_trade
+            last_sell_trade
+
         or
-        <name>{ma_type}[fast_period][slow_period] - for end_sum and profit
+        <name>{ma_type}[fast_period][slow_period] - for general pair calculation:
+            end_sum
+            profit
+
 
     """
     def __init__(self, res, fee, av_obj, data_obj, av_periods, av_pairs):
@@ -220,6 +237,23 @@ class AveragesAnalytics(object):
         self.minimum_profit = {}
         self.average_profit = {}
         self.maximum_profit = {}
+
+        # Stats
+        self.biggest_win = {}
+        self.biggest_loss = {}
+        self.won_trades_sum = {}
+        self.lost_trades_sum = {}
+        self.won_trades_num = {}
+        self.lost_trades_num = {}
+        self.max_consecutive_wins = {}
+        self.max_consecutive_losts = {}
+        self.max_consecutive_profit = {}
+        self.max_consecutive_loss = {}
+
+        # Stats helper vars
+        self.last_buy_trade = {}
+        self.last_sell_trade = {}
+
 
         # For both SMA and EMA variants, do...
         for ma in self.ma_variants:
@@ -240,6 +274,20 @@ class AveragesAnalytics(object):
             self.average_profit[ma] = 0
             self.maximum_profit[ma] = 0
 
+            self.biggest_win[ma] = {}
+            self.biggest_loss[ma] = {}
+            self.won_trades_sum[ma] = {}
+            self.lost_trades_sum[ma] = {}
+            self.won_trades_num[ma] = {}
+            self.lost_trades_num[ma] = {}
+            self.max_consecutive_wins[ma] = {}
+            self.max_consecutive_losts[ma] = {}
+            self.max_consecutive_profit[ma] = {}
+            self.max_consecutive_loss[ma] = {}
+
+            self.last_buy_trade[ma] = {}
+            self.last_sell_trade[ma] = {}
+
             prog = Progress(len(av_pairs))
 
             # Slow and fast MA intersections. All combinations
@@ -251,6 +299,23 @@ class AveragesAnalytics(object):
                 self.current_sum[ma][av_pair] = [float(self.startsum), 0.]
                 self.transactions[ma][av_pair] = 0
 
+                self.biggest_win[ma][av_pair] = 0
+                self.biggest_loss[ma][av_pair] = 0
+                self.won_trades_sum[ma][av_pair] = 0
+                self.lost_trades_sum[ma][av_pair] = 0
+                self.won_trades_num[ma][av_pair] = 0
+                self.lost_trades_num[ma][av_pair] = 0
+                self.max_consecutive_wins[ma][av_pair] = 0
+                self.max_consecutive_losts[ma][av_pair] = 0
+                self.max_consecutive_profit[ma][av_pair] = 0
+                self.max_consecutive_loss[ma][av_pair] = 0
+
+                self.last_buy_trade[ma][av_pair] = {"sum": 0}
+
+                # ..._seq_... keys are for current win/lost sequence counting
+                self.last_sell_trade[ma][av_pair] = {"result": "",
+                    "current_seq_count": 0, "current_seq_start_sum": 0}
+
                 # Iterate over averages data to find intersections
                 for index in range(av_datalength):
                     fast = self.avdata.ma[ma][fast_period][index]
@@ -260,6 +325,8 @@ class AveragesAnalytics(object):
                     if self.current_sum[ma][av_pair][0] > 0 and fast > slow:
                         # Get price from data object
                         price = self.data.price[index]
+                        # Record buying action in stats()
+                        self.stats(ma, av_pair, 'buy', self.current_sum[ma][av_pair][0])
                         # Simulate buy
                         self.buy_sell_sim(price, 'buy', self.current_sum[ma][av_pair])
                         self.transactions[ma][av_pair] += 1
@@ -271,6 +338,8 @@ class AveragesAnalytics(object):
                         self.buy_sell_sim(price, 'sell', self.current_sum[ma][av_pair])
                         # Set end sum to current sum in case this is the last sell
                         self.end_sum[ma][fast_period][slow_period] = self.current_sum[ma][av_pair][0]
+                        # Calculate after-sell statistics
+                        self.stats(ma, av_pair, 'sell', self.current_sum[ma][av_pair][0])
                         self.transactions[ma][av_pair] += 1
 
 
@@ -313,3 +382,116 @@ class AveragesAnalytics(object):
             # Set currency 2 amount to 0
             current_sum[1] = 0
 
+    # Write stats for each pair
+    """
+            biggest_win
+            biggest_loss
+            won_trades_sum
+            lost_trades_sum
+            won_trades_num
+            lost_trades_num
+            max_consecutive_wins
+            max_consecutive_losts
+            max_consecutive_profit
+            max_consecutive_loss
+
+            last_buy_trade
+            last_sell_trade
+
+            """
+
+    def stats(self, ma, av_pair, action, sum):
+        # If buying
+        if action == "buy":
+            # Simply remember this trade
+            self.last_buy_trade[ma][av_pair] = {"sum": sum}
+
+        # If selling
+        elif action == "sell":
+            # Calculate profit in percent for this one trade
+            before_buy_sum = self.last_buy_trade[ma][av_pair]['sum']
+            profit = ((sum - before_buy_sum) / before_buy_sum) * 100
+
+            # If this is the first sell, set sequence start sum to the initial sum
+            if self.last_sell_trade[ma][av_pair]["result"] == "":
+                self.last_sell_trade[ma][av_pair]["current_seq_start_sum"] = before_buy_sum
+
+            # Debug
+            #if ma == 'exp' and av_pair == (11, 21):
+            #    print(self.last_sell_trade[ma][av_pair], "sum:", sum, "profit:", profit)
+
+            # If win
+            if profit > 0:
+                # Write if this is the biggest win
+                if profit > self.biggest_win[ma][av_pair]:
+                    self.biggest_win[ma][av_pair] = profit
+
+                # Summarize total won sum
+                self.won_trades_sum[ma][av_pair] += sum - before_buy_sum
+                # Increment total winning trades count
+                self.won_trades_num[ma][av_pair] += 1
+
+                # If last sell was a loss
+                if self.last_sell_trade[ma][av_pair]["result"] == "loss":
+                    # Calculate last loss sequence loss in percent
+                    loss_start_sum = self.last_sell_trade[ma][av_pair]["current_seq_start_sum"]
+                    last_sequence_loss = ((before_buy_sum - loss_start_sum) / loss_start_sum) * 100
+                    # If it's worse than all-time sequential loss - write
+                    if last_sequence_loss < self.max_consecutive_loss[ma][av_pair]:
+                        self.max_consecutive_loss[ma][av_pair] = last_sequence_loss
+
+                    # Zeroize sequence count
+                    self.last_sell_trade[ma][av_pair]["current_seq_count"] = 0
+                    # And reset start sum
+                    self.last_sell_trade[ma][av_pair]["current_seq_start_sum"] = before_buy_sum
+
+                # Increment consecutive wins count
+                self.last_sell_trade[ma][av_pair]["current_seq_count"] += 1
+
+                # Update max win sequence count if current one is bigger
+                if self.last_sell_trade[ma][av_pair]["current_seq_count"] > self.max_consecutive_wins[ma][av_pair]:
+                    self.max_consecutive_wins[ma][av_pair] = self.last_sell_trade[ma][av_pair]["current_seq_count"]
+
+                # Update last trade result
+                self.last_sell_trade[ma][av_pair]["result"] = "win"
+
+            # If loss
+            else:
+                # Write if this is the worst loss
+                if profit < self.biggest_loss[ma][av_pair]:
+                    self.biggest_loss[ma][av_pair] = profit
+
+                # Summarize total lost sum
+                self.lost_trades_sum[ma][av_pair] += sum - before_buy_sum
+                # Increment total losing trades count
+                self.lost_trades_num[ma][av_pair] += 1
+
+                # If last sell was a win
+                if self.last_sell_trade[ma][av_pair]["result"] == "win":
+                    # Calculate last win sequence profit in percent
+                    win_start_sum = self.last_sell_trade[ma][av_pair]["current_seq_start_sum"]
+                    last_sequence_profit = ((before_buy_sum - win_start_sum) / win_start_sum) * 100
+                    # If it's better than all-time sequential win - write
+                    if last_sequence_profit < self.max_consecutive_profit[ma][av_pair]:
+                        self.max_consecutive_profit[ma][av_pair] = last_sequence_profit
+
+                    # Zeroize sequence count
+                    self.last_sell_trade[ma][av_pair]["current_seq_count"] = 0
+                    # And reset start sum
+                    self.last_sell_trade[ma][av_pair]["current_seq_start_sum"] = before_buy_sum
+
+                # Increment consecutive loss count
+                self.last_sell_trade[ma][av_pair]["current_seq_count"] += 1
+
+                # Update max loss sequence count if current one is bigger
+                if self.last_sell_trade[ma][av_pair]["current_seq_count"] > self.max_consecutive_losts[ma][av_pair]:
+                    self.max_consecutive_losts[ma][av_pair] = self.last_sell_trade[ma][av_pair]["current_seq_count"]
+
+                # Update last trade result
+                self.last_sell_trade[ma][av_pair]["result"] = "loss"
+
+            # Win/loss if end
+
+        # Buy/sell if end
+
+    # stats() end
