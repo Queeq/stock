@@ -67,6 +67,10 @@ def now():
 def dt_timestamp(dt_obj):
     return int(dt_obj.strftime('%s'))
 
+# Return date object from timestamp
+def dt_date(timestamp):
+    return dt.datetime.fromtimestamp(timestamp)
+
 # Function to convert resolution from word to seconds
 # Returns dict like { 5m: 300, ... }
 def resolutions_convert(res_string):

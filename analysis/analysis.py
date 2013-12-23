@@ -326,7 +326,7 @@ class AveragesAnalytics(object):
                         # Get price from data object
                         price = self.data.price[index]
                         # Record buying action in stats()
-                        self.stats(ma, av_pair, 'buy', self.current_sum[ma][av_pair][0])
+                        self.stats(ma, av_pair, 'buy', self.current_sum[ma][av_pair][0], self.data.time[index])
                         # Simulate buy
                         self.buy_sell_sim(price, 'buy', self.current_sum[ma][av_pair])
                         self.transactions[ma][av_pair] += 1
@@ -339,7 +339,7 @@ class AveragesAnalytics(object):
                         # Set end sum to current sum in case this is the last sell
                         self.end_sum[ma][fast_period][slow_period] = self.current_sum[ma][av_pair][0]
                         # Calculate after-sell statistics
-                        self.stats(ma, av_pair, 'sell', self.current_sum[ma][av_pair][0])
+                        self.stats(ma, av_pair, 'sell', self.current_sum[ma][av_pair][0], self.data.time[index])
                         self.transactions[ma][av_pair] += 1
 
 
@@ -400,7 +400,8 @@ class AveragesAnalytics(object):
 
             """
 
-    def stats(self, ma, av_pair, action, sum):
+    def stats(self, ma, av_pair, action, sum, time):
+        date = dt_date(time)
         # If buying
         if action == "buy":
             # Simply remember this trade
@@ -417,8 +418,8 @@ class AveragesAnalytics(object):
                 self.last_sell_trade[ma][av_pair]["current_seq_start_sum"] = before_buy_sum
 
             # Debug
-            #if ma == 'exp' and av_pair == (11, 21):
-            #    print(self.last_sell_trade[ma][av_pair], "sum:", sum, "profit:", profit)
+            if ma == 'exp' and av_pair == (5, 30):
+                print(date, self.last_sell_trade[ma][av_pair], "sum:", sum, "profit:", profit)
 
             # If win
             if profit > 0:
