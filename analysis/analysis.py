@@ -472,7 +472,7 @@ class AveragesAnalytics(object):
                     win_start_sum = self.last_sell_trade[ma][av_pair]["current_seq_start_sum"]
                     last_sequence_profit = ((before_buy_sum - win_start_sum) / win_start_sum) * 100
                     # If it's better than all-time sequential win - write
-                    if last_sequence_profit < self.max_consecutive_profit[ma][av_pair]:
+                    if last_sequence_profit > self.max_consecutive_profit[ma][av_pair]:
                         self.max_consecutive_profit[ma][av_pair] = last_sequence_profit
 
                     # Zeroize sequence count
