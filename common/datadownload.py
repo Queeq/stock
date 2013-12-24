@@ -8,9 +8,9 @@ from . import basic as b
 def btccharts(from_time):
     newest_timestamp = 0
     new_data = []
-    # Fetch data while most recent data is not older than 1 minute
+    # Fetch data while most recent data is not older than 10 minutes
     # due to current limitation for bitcoincharts being 20000 rows at once
-    while b.now() - newest_timestamp > 60:
+    while b.now() - newest_timestamp > 600:
         print("Getting data from bitcoincharts.com")
         # Get latest data from Bitcoincharts
         btcc_data = urllib.request.urlopen("http://api.bitcoincharts.com/v1/trades.csv?symbol=btceUSD&start=%d" % from_time)
