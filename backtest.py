@@ -28,8 +28,8 @@ av_range = config['backtest']['average_periods']
 resolutions_conf = resolutions_convert(resolutions)
 
 # Parse average periods
-av_min_period, av_max_period = av_range.split('-')
-av_periods = range(int(av_min_period), int(av_max_period))
+av_min_period, av_max_period = map(int, av_range.split('-'))
+av_periods = range(av_min_period, av_max_period)
 
 # List of all available period pairs
 av_pairs = list(itertools.combinations(av_periods, 2))
@@ -91,6 +91,10 @@ for row in csv.reader(datafile):
 
 datafile.close()
 
+# Get full_data arrays' size and check it against rowcount of the source file
+fulldata_len = len(full_data.time)
+assert rowcount == fulldata_len == len(full_data.price)
+
 print ('Data read')
 
 actual_endtime = full_data.time[-1]
@@ -99,9 +103,6 @@ if actual_endtime < endtime:
     timeperiod_str = "%s - %s" % (dt.datetime.fromtimestamp(starttime), dt.datetime.fromtimestamp(actual_endtime))
 
 print ("\n")
-
-# Get full_data arrays' size
-fulldata_len = len(full_data.time)
 
 # Init dictionary for data objects
 discrete_data = {}
@@ -133,6 +134,11 @@ for res_name in resolutions_conf.keys():
     print ("Computing %s averages object" % res_name)
     # Create averages objects for every configured resolution and put them in a dict
     av[res_name] = MovingAverages(discrete_data[res_name], av_periods)
+
+    # Check lenghts
+    assert len(av[res_name].ma['simple'][av_min_period+1]) == len(av[res_name].ma['simple'][av_max_period-1]) == \
+        len(av[res_name].ma['exp'][av_min_period+1]) == len(av[res_name].ma['exp'][av_max_period-1]) == \
+        len(discrete_data[res_name].time) == len(discrete_data[res_name].price)
 
 '''
 p_res="1h"
