@@ -76,7 +76,6 @@ class Data(object):
 
         else:
             self.last_line = {'time': time, 'price': price}
-
     def update(self, time, price):
         """ Overwrite last values or shift all data
             by one in case resolution border is crossed.
@@ -238,6 +237,9 @@ class AveragesAnalytics(object):
         self.average_profit = {}
         self.maximum_profit = {}
 
+        # Helper var to prevent instant buy which is usually unprofitable
+        self.buy_allowed = {}
+
         # Stats
         self.biggest_win = {}
         self.biggest_loss = {}
@@ -274,6 +276,8 @@ class AveragesAnalytics(object):
             self.average_profit[ma] = 0
             self.maximum_profit[ma] = 0
 
+            self.buy_allowed[ma] = {}
+
             self.biggest_win[ma] = {}
             self.biggest_loss[ma] = {}
             self.won_trades_sum[ma] = {}
@@ -299,6 +303,8 @@ class AveragesAnalytics(object):
                 self.current_sum[ma][av_pair] = [float(self.startsum), 0.]
                 self.transactions[ma][av_pair] = 0
 
+                self.buy_allowed[ma][av_pair] = False
+
                 self.biggest_win[ma][av_pair] = 0
                 self.biggest_loss[ma][av_pair] = 0
                 self.won_trades_sum[ma][av_pair] = 0
@@ -321,8 +327,13 @@ class AveragesAnalytics(object):
                     fast = self.avdata.ma[ma][fast_period][index]
                     slow = self.avdata.ma[ma][slow_period][index]
 
-                    # If able to buy - look for fast going above slow
-                    if self.current_sum[ma][av_pair][0] > 0 and fast > slow:
+                    # Prevent instant buy upon start by using buy_allowed flag
+                    # Allow only after first transfer from downtrend to uptrend
+                    if fast < slow:
+                        self.buy_allowed[ma][av_pair] = True
+
+                    # If able to buy - look for fast going above slow.
+                    if self.current_sum[ma][av_pair][0] > 0 and fast > slow and self.buy_allowed[ma][av_pair]:
                         # Get price from data object
                         price = self.data.price[index]
                         # Record buying action in stats()
@@ -501,8 +512,9 @@ class AveragesAnalytics(object):
             # Debug
             if ma == debug_ma and av_pair == debug_pair:
                 print(date, "Sell for %.2f" % price)
-                print(date, "%s Sum: %.2f profit: %.2f%%" % (self.last_sell_trade[ma][av_pair], sum, profit)
+                print(date, "%s Sum: %.2f profit: %.2f%%" % (self.last_sell_trade[ma][av_pair], sum, profit))
 
         # Buy/sell if end
 
     # stats() end
+
