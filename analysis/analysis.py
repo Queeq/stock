@@ -199,6 +199,21 @@ class MovingAverages(object):
             data_obj.price = data_obj.price[max(av_periods):]
 
 
+# Parabolic stop-and-reverse implementation
+class SAR(object):
+    """
+    Parabolic SAR data object
+    """
+    def __init__(self, data_obj, realtime=False, af_inc=0.02, af_max=0.2):
+        data = data_obj.price
+        datalen = len(data)
+
+        # Extreme points
+        # Trend momentum
+
+
+
+
 class AveragesAnalytics(object):
     """
     Structure:
