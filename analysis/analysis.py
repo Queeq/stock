@@ -1,3 +1,5 @@
+from time import sleep
+
 import numpy as np
 import array
 
@@ -20,6 +22,8 @@ class Data(object):
     def __init__(self, resolution = 0):
         self.time = array.array('I') # Unsigned int - 2 bytes
         self.price = array.array('d') # Double - 8 bytes. Setting 'f' (4 bytes float) leads to incorrect values!
+        self.high = array.array('d') # Period's highest price
+        self.low = array.array('d') # Period's lowest price
 
         self.resolution = resolution # Accepting only closing price of such intervals (e.g. 5 min, 30 min, 1h), in seconds
         self.append_tries = 0
@@ -42,15 +46,20 @@ class Data(object):
             for i in range (1, intervals_missed + 1):
                 self.time.append(self.interval_end + self.resolution * i)
                 self.price.append(to_write['price'])
+                self.high.append(to_write['price'])
+                self.low.append(to_write['price'])
 
     def append(self, time, price):
         time = int(time)
         price = float(price)
 
-        # Put first line into dictionary and calculate first interval end
+        # Put first line into dictionary, calculate first interval end
+        # and fill in initial high and low
         if self.append_tries == 0:
             self.last_line = {'time': time, 'price': price}
             self.set_interval_end(time)
+            self.current_high = price
+            self.current_low = price
 
         self.append_tries += 1
 
@@ -71,11 +80,25 @@ class Data(object):
             if time - self.interval_end > self.resolution and self.resolution != 0:
                 self.fill_empty_intervals(time, to_write)
 
+            # Fill in high and low if this is not generic data
+            if self.resolution > 0:
+                self.high.append(self.current_high)
+                self.low.append(self.current_low)
+
             self.last_line = {'time': time, 'price': price}
             self.set_interval_end(time)
+            self.current_high = price
+            self.current_low = price
 
         else:
             self.last_line = {'time': time, 'price': price}
+            # Check high and low
+            if price > self.current_high:
+                self.current_high = price
+            if price < self.current_low:
+                self.current_low = price
+
+
     def update(self, time, price):
         """ Overwrite last values or shift all data
             by one in case resolution border is crossed.
