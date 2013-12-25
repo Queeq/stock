@@ -138,9 +138,16 @@ for res_name in resolutions_conf.keys():
     # Check lenghts
     assert len(av[res_name].ma['simple'][av_min_period+1]) == len(av[res_name].ma['simple'][av_max_period-1]) == \
         len(av[res_name].ma['exp'][av_min_period+1]) == len(av[res_name].ma['exp'][av_max_period-1]) == \
-        len(discrete_data[res_name].time) == len(discrete_data[res_name].price)
+        len(discrete_data[res_name].time) == len(discrete_data[res_name].price) == \
+        len(discrete_data[res_name].high) == len(discrete_data[res_name].low)
 
-'''
+SARs = {}
+for res_name in resolutions_conf.keys():
+    print ("Computing %s SAR object" % res_name)
+    # Dictionary for SAR objects of different resolutions
+    SARs[res_name] = SAR(discrete_data[res_name])
+
+"""
 p_res="1h"
 # Testing data
 for index, time in enumerate(discrete_data[p_res].time):
@@ -149,7 +156,7 @@ for index, time in enumerate(discrete_data[p_res].time):
             (discrete_data[p_res].price[index],
             av[p_res].ma['simple'][3][index],
             av[p_res].ma['exp'][3][index]))
-'''
+"""
 
 analytics = {}
 for res_name in resolutions_conf.keys():
