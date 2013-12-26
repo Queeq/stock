@@ -50,14 +50,11 @@ class Data(object):
                 self.price.append(to_write['price'])
                 self.high.append(to_write['price'])
                 self.low.append(to_write['price'])
-                print(dt_date(self.time[-1]), self.low[-1], self.price[-1], self.high[-1])
-                sleep(0.1)
 
     def append(self, time, price):
         time = int(time)
         price = float(price)
 
-        print("Got", time, dt_date(time), price)
         # Put first line into dictionary, calculate first interval end
         # and fill in initial high and low
         if self.append_tries == 0:
@@ -90,10 +87,6 @@ class Data(object):
                 self.high.append(self.current_high)
                 self.low.append(self.current_low)
 
-            if self.resolution > 0:
-                print("==================")
-                print(dt_date(self.time[-1]), self.low[-1], self.price[-1], self.high[-1])
-                sleep(0.1)
             self.last_line = {'time': time, 'price': price}
             self.set_interval_end(time)
             self.current_high = price
@@ -204,8 +197,11 @@ class MovingAverages(object):
 
         if not realtime:
             # Cut first elements for Data obj of given resolution as well
+            # TODO: Separate function for this
             data_obj.time = data_obj.time[max(av_periods):]
             data_obj.price = data_obj.price[max(av_periods):]
+            data_obj.high = data_obj.high[max(av_periods):]
+            data_obj.low = data_obj.low[max(av_periods):]
 
 
 # Parabolic stop-and-reverse implementation
@@ -220,9 +216,9 @@ class SAR(object):
     def __init__(self, data_obj, realtime=False, af_inc=0.02, af_max=0.2):
         heights = data_obj.high
         lows = data_obj.low
-        datalen = len(self.heights)
+        datalen = len(heights)
 
-        assert datalen == len(self.lows)
+        assert datalen == len(lows)
 
         # Main object data
         self.trend = array.array('h') # Signed short
@@ -237,7 +233,7 @@ class SAR(object):
 
         # Init first SAR value based on trend to first position low or high
         # and extreme point value (highest on uptrend, lowest on downtrend)
-        if current_trend > 0:
+        if self.trend[0] > 0:
             self.sar.append(lows[0])
             xp = heights[0]
         else:
@@ -247,11 +243,11 @@ class SAR(object):
         # Init acceleration factor
         af = af_inc
 
-        print(dt_date(data_obj.time[0]), "Trend: %d Hi: %.2f Lo: %.2f SAR: %.2f XP: %.2f" %
-            (self.trend[0], heights[0], lows[0], self.sar[0], xp))
+        print(dt_date(data_obj.time[0]), "Trend: %d Hi: %.2f Lo: %.2f SAR: %.2f XP: %.2f AF: %.2f" %
+            (self.trend[0], heights[0], lows[0], self.sar[0], xp, af))
         sleep(0.1)
 
-        for i in range(1, self.datalen):
+        for i in range(1, datalen):
 
             # If trend was up
             if self.trend[i-1] > 0:
@@ -266,7 +262,7 @@ class SAR(object):
                 current_sar = self.sar[i-1] + af * (xp - self.sar[i-1])
 
                 # SAR can't be higher than previous low
-                assert current_sar < lows[i-1]
+                #assert current_sar < lows[i-1]
 
                 # Check if we have reversal
                 # (current period low is lower than SAR)
@@ -274,7 +270,7 @@ class SAR(object):
                     # Reverse trend
                     self.trend.append(-1)
                     # Set current SAR to current extreme point
-                    self.sar.append(xp)
+                    self.sar.append(lows[i])
                     # Reset acceleration factor
                     af = af_inc
                     # Reset extreme point
@@ -284,8 +280,8 @@ class SAR(object):
                     self.trend.append(1)
                     self.sar.append(current_sar)
 
-                print(dt_date(data_obj.time[i]), "Trend: %d Hi: %.2f Lo: %.2f SAR: %.2f XP: %.2f" %
-                    (self.trend[i], heights[i], lows[i], self.sar[i], xp))
+                print(dt_date(data_obj.time[i]), "Trend: %d Hi: %.2f Lo: %.2f SAR: %.2f XP: %.2f AF: %.2f" %
+                    (self.trend[i], heights[i], lows[i], self.sar[i], xp, af))
                 sleep(0.1)
             # End if uptrend
 
@@ -300,27 +296,27 @@ class SAR(object):
                 # Calculate this period's SAR
                 current_sar = self.sar[i-1] - af * (xp - self.sar[i-1])
 
-                # SAR can't be lower than previous high
-                assert current_sar > heights[i-1]
-
                 # Check if we have reversal
                 # (current period high is higher than SAR)
                 if heights[i] > current_sar:
                     # Reverse trend
                     self.trend.append(1)
                     # Set current SAR to current extreme point
-                    self.sar.append(xp)
+                    self.sar.append(heights[i])
                     # Reset acceleration factor
                     af = af_inc
                     # Reset extreme point
                     xp = heights[i]
                 # If trend haven't reversed - record current values
                 else:
+                    # SAR can't be lower than previous high
+                    assert current_sar > heights[i-1]
+
                     self.trend.append(-1)
                     self.sar.append(current_sar)
 
-                print(dt_date(data_obj.time[i]), "Trend: %d Hi: %.2f Lo: %.2f SAR: %.2f XP: %.2f" %
-                    (self.trend[i], heights[i], lows[i], self.sar[i], xp))
+                print(dt_date(data_obj.time[i]), "Trend: %d Hi: %.2f Lo: %.2f SAR: %.2f XP: %.2f AF: %.2f" %
+                    (self.trend[i], heights[i], lows[i], self.sar[i], xp, af))
                 sleep(0.1)
             # End elif downtrend
         # End for loop through datapoints
