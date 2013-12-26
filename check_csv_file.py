@@ -24,8 +24,6 @@ with open(args.datafile_path, 'r') as f:
     # Put first line
     buf.append(f.readline())
     for i, line in enumerate(f):
-       # Actual line number is i+1 as first line is already read
-       i += 1
        # Put current line into buffer
        buf.append(line)
 
@@ -36,6 +34,7 @@ with open(args.datafile_path, 'r') as f:
        if prev_timestamp > cur_timestamp:
            print("%s detected around %s" % (dt_date(prev_timestamp), dt_date(cur_timestamp)))
 
+       del buf[0]
        if i % 100000 == 0:
            print("Line: %s" % i)
 
