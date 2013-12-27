@@ -270,7 +270,7 @@ class SAR(object):
                     # Reverse trend
                     self.trend.append(-1)
                     # Set current SAR to current extreme point
-                    self.sar.append(lows[i])
+                    self.sar.append(xp)
                     # Reset acceleration factor
                     af = af_inc
                     # Reset extreme point
@@ -294,7 +294,7 @@ class SAR(object):
                     af = min(af_max, af+af_inc)
 
                 # Calculate this period's SAR
-                current_sar = self.sar[i-1] - af * (xp - self.sar[i-1])
+                current_sar = self.sar[i-1] + af * (xp - self.sar[i-1])
 
                 # Check if we have reversal
                 # (current period high is higher than SAR)
@@ -302,7 +302,7 @@ class SAR(object):
                     # Reverse trend
                     self.trend.append(1)
                     # Set current SAR to current extreme point
-                    self.sar.append(heights[i])
+                    self.sar.append(xp)
                     # Reset acceleration factor
                     af = af_inc
                     # Reset extreme point
