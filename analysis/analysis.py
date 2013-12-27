@@ -372,12 +372,13 @@ class AveragesAnalytics(object):
 
 
     """
-    def __init__(self, res, fee, av_obj, data_obj, av_periods, av_pairs):
+    def __init__(self, res, fee, av_obj, data_obj, av_periods, av_pairs, sar_obj):
         self.resolution = res
         self.fee = float(fee)
         self.startsum = 100
         self.avdata = av_obj
         self.data = data_obj
+        self.sar = sar_obj
 
         self.ma_variants = ('simple', 'exp')
         self.current_sum = {}
@@ -484,8 +485,11 @@ class AveragesAnalytics(object):
                     if fast < slow:
                         self.buy_allowed[ma][av_pair] = True
 
-                    # If able to buy - look for fast going above slow.
-                    if self.current_sum[ma][av_pair][0] > 0 and fast > slow and self.buy_allowed[ma][av_pair]:
+                    # If able to buy
+                    if self.current_sum[ma][av_pair][0] > 0 \
+                      and self.decision('buy', fast, slow, index, av_pair) \
+                      and self.buy_allowed[ma][av_pair]:
+
                         # Get price from data object
                         price = self.data.price[index]
                         # Record buying action in stats()
@@ -494,8 +498,10 @@ class AveragesAnalytics(object):
                         # Simulate buy
                         self.buy_sell_sim(price, 'buy', self.current_sum[ma][av_pair])
                         self.transactions[ma][av_pair] += 1
-                    # Else, if able to sell - look for fast going below slow
-                    elif self.current_sum[ma][av_pair][1] > 0 and fast < slow:
+
+                    # Else, if able to sell
+                    elif self.current_sum[ma][av_pair][1] > 0 \
+                      and self.decision('sell', fast, slow, index, av_pair):
                         # Get price from data object
                         price = self.data.price[index]
                         # Simulate sell
@@ -525,6 +531,31 @@ class AveragesAnalytics(object):
             print ("%s %s profit/lost: min %.2f%% av %.2f%% max %.2f%%" % (self.resolution, ma, self.minimum_profit[ma], self.average_profit[ma], self.maximum_profit[ma]))
 
         # end ma type loop
+
+
+    # Decision on whether to buy or sell
+    def decision(self, action, fast_ma, slow_ma, index, pair):
+        """
+        action - indicates desired action
+        Function approves or discards it
+        """
+
+        if action == 'buy':
+            # Buy when fast MA is above slow
+            if fast_ma > slow_ma and self.sar.trend[index] > 0:
+                return True
+            else:
+                return False
+
+        if action == 'sell':
+            # Sell when fast MA is below slow
+            # and SAR trending down
+            if fast_ma < slow_ma or self.sar.trend[index] < 0:
+                if pair == (5, 30):
+                    print("Fast: %.2f Slow: %.2f Trend %d" % (fast_ma, slow_ma, self.sar.trend[index]))
+                return True
+            else:
+                return False
 
 
     # Simulate buying or selling all

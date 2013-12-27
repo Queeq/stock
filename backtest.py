@@ -147,6 +147,8 @@ for res_name in resolutions_conf.keys():
     # Dictionary for SAR objects of different resolutions
     SARs[res_name] = SAR(discrete_data[res_name])
 
+    assert len(SARs[res_name].trend) == len(SARs[res_name].sar) == len(discrete_data[res_name].time)
+
 """
 p_res="1h"
 # Testing data
@@ -160,7 +162,8 @@ for index, time in enumerate(discrete_data[p_res].time):
 
 analytics = {}
 for res_name in resolutions_conf.keys():
-    analytics[res_name] = AveragesAnalytics(res_name, args.fee, av[res_name], discrete_data[res_name], av_periods, av_pairs)
+    analytics[res_name] = AveragesAnalytics(res_name, args.fee, av[res_name],
+        discrete_data[res_name], av_periods, av_pairs, SARs[res_name])
     print ("")
 
 if args.do_plot:
@@ -216,7 +219,7 @@ else:
 
 # Print stats to file
 for res_name in resolutions_conf.keys():
-    wr_stats = WriteStats('stats-%s.txt' % res_name)
+    wr_stats = WriteStats('stats-%s %s.txt' % (res_name, timeperiod_str))
 
     for ma in ('simple', 'exp'):
         print("Writing stats for", res_name, ma)
