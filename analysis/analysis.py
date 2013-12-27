@@ -243,9 +243,9 @@ class SAR(object):
         # Init acceleration factor
         af = af_inc
 
-        print(dt_date(data_obj.time[0]), "Trend: %d Hi: %.2f Lo: %.2f SAR: %.2f XP: %.2f AF: %.2f" %
-            (self.trend[0], heights[0], lows[0], self.sar[0], xp, af))
-        sleep(0.1)
+        #print(dt_date(data_obj.time[0]), "Trend: %d Hi: %.2f Lo: %.2f SAR: %.2f XP: %.2f AF: %.2f" %
+        #    (self.trend[0], heights[0], lows[0], self.sar[0], xp, af))
+        #sleep(0.1)
 
         for i in range(1, datalen):
 
@@ -262,7 +262,8 @@ class SAR(object):
                 current_sar = self.sar[i-1] + af * (xp - self.sar[i-1])
 
                 # SAR can't be higher than previous low
-                #assert current_sar < lows[i-1]
+                if current_sar > lows[i-1]:
+                    current_sar = lows[i-1]
 
                 # Check if we have reversal
                 # (current period low is lower than SAR)
@@ -280,9 +281,9 @@ class SAR(object):
                     self.trend.append(1)
                     self.sar.append(current_sar)
 
-                print(dt_date(data_obj.time[i]), "Trend: %d Hi: %.2f Lo: %.2f SAR: %.2f XP: %.2f AF: %.2f" %
-                    (self.trend[i], heights[i], lows[i], self.sar[i], xp, af))
-                sleep(0.1)
+                #print(dt_date(data_obj.time[i]), "Trend: %d Hi: %.2f Lo: %.2f SAR: %.2f XP: %.2f AF: %.2f" %
+                #    (self.trend[i], heights[i], lows[i], self.sar[i], xp, af))
+                #sleep(0.1)
             # End if uptrend
 
             elif self.trend[i-1] < 0:
@@ -295,6 +296,10 @@ class SAR(object):
 
                 # Calculate this period's SAR
                 current_sar = self.sar[i-1] + af * (xp - self.sar[i-1])
+
+                # SAR can't be lower than previous high
+                if current_sar < heights[i-1]:
+                    current_sar = heights[i-1]
 
                 # Check if we have reversal
                 # (current period high is higher than SAR)
@@ -309,15 +314,13 @@ class SAR(object):
                     xp = heights[i]
                 # If trend haven't reversed - record current values
                 else:
-                    # SAR can't be lower than previous high
-                    assert current_sar > heights[i-1]
 
                     self.trend.append(-1)
                     self.sar.append(current_sar)
 
-                print(dt_date(data_obj.time[i]), "Trend: %d Hi: %.2f Lo: %.2f SAR: %.2f XP: %.2f AF: %.2f" %
-                    (self.trend[i], heights[i], lows[i], self.sar[i], xp, af))
-                sleep(0.1)
+                #print(dt_date(data_obj.time[i]), "Trend: %d Hi: %.2f Lo: %.2f SAR: %.2f XP: %.2f AF: %.2f" %
+                #    (self.trend[i], heights[i], lows[i], self.sar[i], xp, af))
+                #sleep(0.1)
             # End elif downtrend
         # End for loop through datapoints
 
