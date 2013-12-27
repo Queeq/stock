@@ -33,6 +33,12 @@ with open(args.datafile_path, 'rb') as f:
     lines = raw_data.split('\n')
     # Get last line
     last_line = lines[-1]
+    # If last line is empty
+    if last_line == "":
+        last_line = lines[-2]
+        newline_before = False
+    else:
+        newline_before = True
     last_timestamp = int(last_line.split(',')[0])
     print("Last available point is at %s" % dt.datetime.fromtimestamp(last_timestamp))
 
@@ -43,5 +49,8 @@ print("Appending %s lines to file. Last point is at %s" % (len(new_data), dt.dat
 
 with open(args.datafile_path, 'a') as f:
     for line in new_data:
-        f.write("\n"+line)
+        if newline_before:
+            f.write("\n"+line)
+        else:
+            f.write(line+"\n")
 
