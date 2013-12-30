@@ -41,8 +41,12 @@ aparser.add_argument('-f', '--fee', dest='fee', help='Stock fee. Default: 0.002'
 aparser.add_argument('-p', '--period', dest='timedelta', nargs=2, metavar=('INTEGER', '{d|w|m|y}'), help='From what time ago to start analysis. Value with day/week/month/year suffix')
 aparser.add_argument('-s', '--start', dest='startdate', help='Date to start analysis from. Format: dd.mm.yy')
 aparser.add_argument('-e', '--end', dest='enddate', help='Date to finish analysis at. Format: dd.mm.yy')
+aparser.add_argument('-a', '--algorithm', dest='algorithm', help="""Algorithm to use.
+1: MA crossings (default)
+2: MA crossings with simple SAR (buy on crossing, sell on crossing + SAR trend down
+3: MA crossings with advanced SAR (see analysis/analysis.py decision()""")
 aparser.add_argument('--no-plot', dest='do_plot', action='store_false', help='Do not draw plots, just show text stats')
-aparser.set_defaults(do_plot=True, fee=0.002)
+aparser.set_defaults(do_plot=True, fee=0.002, algorithm=1)
 args = aparser.parse_args()
 
 now = int(dt.datetime.now().strftime('%s'))
@@ -162,7 +166,7 @@ for index, time in enumerate(discrete_data[p_res].time):
 
 analytics = {}
 for res_name in resolutions_conf.keys():
-    analytics[res_name] = AveragesAnalytics(res_name, args.fee, av[res_name],
+    analytics[res_name] = AveragesAnalytics(res_name, args.fee, args.algorithm, av[res_name],
         discrete_data[res_name], av_periods, av_pairs, SARs[res_name])
     print ("")
 
@@ -191,10 +195,11 @@ if args.do_plot:
             plot_data = analytics[res_name].profit[ma_type]
             plot_mask = np.ma.getmaskarray(plot_data)
             min_profit = analytics[res_name].minimum_profit[ma_type]
+            av_profit = analytics[res_name].average_profit[ma_type]
             max_profit = analytics[res_name].maximum_profit[ma_type]
 
             plt.subplot2grid((plot_rows, plot_columns), (0, type_index))
-            plt.title("%s %s %s\nMin: %.2f Max: %.2f" % (timeperiod_str, res_name, ma_type, min_profit, max_profit))
+            plt.title("%s\n%s %s. Algorithm #%s\nMin: %.2f Av: %.2f Max: %.2f" % (timeperiod_str, res_name, ma_type, args.algorithm, min_profit, av_profit, max_profit))
             for (x, y), value in np.ndenumerate(plot_data):
                 if plot_mask[x, y] == False:
                     plt.text(x + 0.5, y + 0.5, '%.2f%%\n(%d, %d)' % (value, x, y), horizontalalignment='center', verticalalignment='center', fontsize=fontsize)

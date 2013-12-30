@@ -372,9 +372,10 @@ class AveragesAnalytics(object):
 
 
     """
-    def __init__(self, res, fee, av_obj, data_obj, av_periods, av_pairs, sar_obj):
+    def __init__(self, res, fee, algo, av_obj, data_obj, av_periods, av_pairs, sar_obj):
         self.resolution = res
         self.fee = float(fee)
+        self.algorithm = int(algo)
         self.startsum = 100
         self.avdata = av_obj
         self.data = data_obj
@@ -389,9 +390,6 @@ class AveragesAnalytics(object):
         self.minimum_profit = {}
         self.average_profit = {}
         self.maximum_profit = {}
-
-        # Helper var to prevent instant buy which is usually unprofitable
-        self.buy_allowed = {}
 
         # Stats
         self.biggest_win = {}
@@ -429,8 +427,6 @@ class AveragesAnalytics(object):
             self.average_profit[ma] = 0
             self.maximum_profit[ma] = 0
 
-            self.buy_allowed[ma] = {}
-
             self.biggest_win[ma] = {}
             self.biggest_loss[ma] = {}
             self.won_trades_sum[ma] = {}
@@ -456,8 +452,6 @@ class AveragesAnalytics(object):
                 self.current_sum[ma][av_pair] = [float(self.startsum), 0.]
                 self.transactions[ma][av_pair] = 0
 
-                self.buy_allowed[ma][av_pair] = False
-
                 self.biggest_win[ma][av_pair] = 0
                 self.biggest_loss[ma][av_pair] = 0
                 self.won_trades_sum[ma][av_pair] = 0
@@ -475,20 +469,17 @@ class AveragesAnalytics(object):
                 self.last_sell_trade[ma][av_pair] = {"result": "",
                     "current_seq_count": 0, "current_seq_start_sum": 0}
 
+                # Prevent instant buy
+                self.buy_allowed = False
+
                 # Iterate over averages data to find intersections
                 for index in range(av_datalength):
                     fast = self.avdata.ma[ma][fast_period][index]
                     slow = self.avdata.ma[ma][slow_period][index]
 
-                    # Prevent instant buy upon start by using buy_allowed flag
-                    # Allow only after first transfer from downtrend to uptrend
-                    if fast < slow:
-                        self.buy_allowed[ma][av_pair] = True
-
                     # If able to buy
                     if self.current_sum[ma][av_pair][0] > 0 \
-                      and self.decision('buy', fast, slow, index, av_pair) \
-                      and self.buy_allowed[ma][av_pair]:
+                      and self.decision('buy', fast, slow, index, av_pair):
 
                         # Get price from data object
                         price = self.data.price[index]
@@ -539,23 +530,53 @@ class AveragesAnalytics(object):
         action - indicates desired action
         Function approves or discards it
         """
-
         if action == 'buy':
-            # Buy when fast MA is above slow
-            if fast_ma > slow_ma and self.sar.trend[index] > 0:
-                return True
-            else:
-                return False
+            """
+            Algorithms #1, #2 and #3.
+            Buy on fast crossing slow upwards
+            """
+            if self.algorithm == 1 or self.algorithm == 2 or self.algorithm == 3:
+                if fast_ma < slow_ma:
+                    # Check if fast crosses slow downwards
+                    self.buy_allowed = True
 
-        if action == 'sell':
-            # Sell when fast MA is below slow
-            # and SAR trending down
-            if fast_ma < slow_ma or self.sar.trend[index] < 0:
-                if pair == (5, 30):
-                    print("Fast: %.2f Slow: %.2f Trend %d" % (fast_ma, slow_ma, self.sar.trend[index]))
-                return True
-            else:
-                return False
+                if fast_ma > slow_ma and self.buy_allowed:
+                    return True
+                else:
+                    return False
+
+        elif action == 'sell':
+            """
+            Algorithm #1.
+            Sell on fast crossing slow downwards
+            """
+            if self.algorithm == 1:
+                # Sell when fast MA is below slow
+                if fast_ma < slow_ma:
+                    return True
+                else:
+                    return False
+            """
+            Algorithm #2.
+            Sell if both fast < slow and SAR trend is down
+            """
+            if self.algorithm == 2:
+                if fast_ma < slow_ma and self.sar.trend[index] < 0:
+                    return True
+                else:
+                    return False
+            """
+            Algorithm #3.
+            Sell on either fast < slow or SAR trend is down
+            whatever comes first. Prevent instant buy after sell
+            by setting buy_allowed flag to false
+            """
+            if self.algorithm == 3:
+                if fast_ma < slow_ma or self.sar.trend[index] < 0:
+                    self.buy_allowed = False
+                    return True
+                else:
+                    return False
 
 
     # Simulate buying or selling all
@@ -600,7 +621,7 @@ class AveragesAnalytics(object):
         date = dt_date(time)
         # Additional printing for these settings
         debug_ma = 'exp'
-        debug_pair = (5, 30)
+        debug_pair = (18, 27)
 
         # If buying
         if action == "buy":
