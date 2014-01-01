@@ -111,9 +111,17 @@ class Data(object):
         if time - self.interval_end >= 0:
             # Remove first element if inteval end passed
             element_n = 0
+            # Set high and low to current price
+            self.current_high = price
+            self.current_low = price
         else:
             # Remove last element if inteval end not passed
             element_n = -1
+            # Detect if high or low changed
+            if price > self.current_high:
+                self.current_high = price
+            if price < self.current_low:
+                self.current_low = price
 
         # If arrived data is newer - write
         if time > self.time[-1]:
@@ -121,10 +129,14 @@ class Data(object):
             if self.update_count > 0:
                 self.time.pop(element_n)
                 self.price.pop(element_n)
+                self.high.pop(element_n)
+                self.low.pop(element_n)
 
             # And write new value
             self.time.append(time)
             self.price.append(price)
+            self.high.append(self.current_high)
+            self.low.append(self.current_low)
             # Update end of interval
             self.set_interval_end(time)
             self.update_count += 1
@@ -213,7 +225,7 @@ class SAR(object):
         Array #1: Trend direction
         Array #2: SAR value
     """
-    def __init__(self, data_obj, realtime=False, af_inc=0.02, af_max=0.2):
+    def __init__(self, data_obj, af_inc=0.02, af_max=0.2):
         heights = data_obj.high
         lows = data_obj.low
         datalen = len(heights)

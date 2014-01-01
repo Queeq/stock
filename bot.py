@@ -58,11 +58,14 @@ while True:
 
     # Calculate averages based on working dataset
     mas = MovingAverages(working_dataset, (fast, slow), realtime=True)
+    # Calculate SAR for working dataset
+    sar = SAR(working_dataset)
 
-    print (dt.datetime.fromtimestamp(working_dataset.time[-1]), working_dataset.price[-1],
-        "\tSimple fast: %.2f slow: %.2f Exp fast: %.2f slow: %.2f"
-        % (mas.ma['simple'][fast][-1], mas.ma['simple'][slow][-1],
-        mas.ma['exp'][fast][-1], mas.ma['exp'][slow][-1]))
+    print (dt_date(working_dataset.time[-1]), working_dataset.price[-1],
+        working_dataset.high[-1], working_dataset.low[-1],
+        "\tFast: %.2f slow: %.2f SAR: %.2f Trend: %s"
+        % (mas.ma['exp'][fast][-1], mas.ma['exp'][slow][-1],
+        sar.sar[-1], sar.trend[-1]))
 
     # Run decision function
 
