@@ -493,7 +493,7 @@ class AveragesAnalytics(object):
 
                     # If able to buy
                     if self.current_sum[ma][av_pair][0] > 0 \
-                      and self.decision('buy', fast, slow, index, av_pair):
+                      and self.decision('buy', fast, slow, self.sar.trend[index]):
 
                         # Get price from data object
                         price = self.data.price[index]
@@ -506,7 +506,7 @@ class AveragesAnalytics(object):
 
                     # Else, if able to sell
                     elif self.current_sum[ma][av_pair][1] > 0 \
-                      and self.decision('sell', fast, slow, index, av_pair):
+                      and self.decision('sell', fast, slow, self.sar.trend[index]):
                         # Get price from data object
                         price = self.data.price[index]
                         # Simulate sell
@@ -541,7 +541,7 @@ class AveragesAnalytics(object):
 
 
     # Decision on whether to buy or sell
-    def decision(self, action, fast_ma, slow_ma, index, pair):
+    def decision(self, action, fast_ma, slow_ma, sar_trend):
         """
         action - indicates desired action
         Function approves or discards it
@@ -577,7 +577,7 @@ class AveragesAnalytics(object):
             Sell if both fast < slow and SAR trend is down
             """
             if self.algorithm == 2:
-                if fast_ma < slow_ma and self.sar.trend[index] < 0:
+                if fast_ma < slow_ma and sar_trend < 0:
                     return True
                 else:
                     return False
@@ -588,7 +588,7 @@ class AveragesAnalytics(object):
             by setting buy_allowed flag to false
             """
             if self.algorithm == 3:
-                if fast_ma < slow_ma or self.sar.trend[index] < 0:
+                if fast_ma < slow_ma or sar_trend < 0:
                     self.buy_allowed = False
                     return True
                 else:
@@ -637,7 +637,7 @@ class AveragesAnalytics(object):
         date = dt_date(time)
         # Additional printing for these settings
         debug_ma = 'exp'
-        debug_pair = (18, 27)
+        debug_pair = (18, 26)
 
         # If buying
         if action == "buy":

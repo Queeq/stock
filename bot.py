@@ -21,7 +21,6 @@ res_name = config['bot']['resolution']
 res_value = resolutions_convert(res_name)[res_name]
 
 pair = 'btc_usd'
-# Def buy/sell decision
 
 # Def buy/sell simulation
     # Calculate and log amounts
@@ -48,10 +47,13 @@ working_dataset.update(time, price)
 for i, time in enumerate(working_dataset.time):
     print (dt.datetime.fromtimestamp(time), working_dataset.price[i])
 
-#TODO: get fee
 fee = btceapi.getTradeFee(pair)
 # Analytics object
-analytics = AverageAnalytics(res_name, fee, 2)
+act = AveragesAnalytics(res_name, fee, 2)
+
+# Prepare object data
+act.current_sum = [float(act.startsum), 0.]
+act.buy_allowed = False
 
 # Loop
 while True:
@@ -66,16 +68,34 @@ while True:
     # Calculate SAR for working dataset
     sar = SAR(working_dataset)
 
-    print (dt_date(working_dataset.time[-1]), working_dataset.price[-1],
+    fast_value = mas.ma['exp'][fast][-1]
+    slow_value = mas.ma['exp'][slow][-1]
+    trend = sar.trend[-1]
+    price = working_dataset.price[-1]
+    time = working_dataset.time[-1]
+
+    print (dt_date(time), price,
         working_dataset.high[-1], working_dataset.low[-1],
         "\tFast: %.2f slow: %.2f SAR: %.2f Trend: %s"
-        % (mas.ma['exp'][fast][-1], mas.ma['exp'][slow][-1],
-        sar.sar[-1], sar.trend[-1]))
+        % (fast_value, slow_value, sar.sar[-1], trend))
 
-    # Run decision function
+    #### Simulation ####
+    # If able to buy and buy decision is positive
+    if act.current_sum[0] > 0 \
+      and act.decision('buy', fast_value, slow_value, trend):
+        print("===========%s Buying for %.2f==========="
+            % (dt_date(time), price))
+        act.buy_sell_sim(price, 'buy', act.current_sum)
 
-    # Buy/sell sim or real based on config
+    # If able to sell and sell decision is positive
+    if act.current_sum[0] > 0 \
+      and act.decision('sell', fast_value, slow_value, trend):
+        print("===========%s Selling for %.2f==========="
+            % (dt_date(time), price))
+        act.buy_sell_sim(price, 'sell', act.current_sum)
+        print("Current sum is", act.current_sum[0])
 
     # Log operation
+
     sleep(10)
 
