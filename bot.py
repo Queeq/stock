@@ -48,10 +48,15 @@ working_dataset.update(time, price)
 for i, time in enumerate(working_dataset.time):
     print (dt.datetime.fromtimestamp(time), working_dataset.price[i])
 
+#TODO: get fee
+fee = btceapi.getTradeFee(pair)
+# Analytics object
+analytics = AverageAnalytics(res_name, fee, 2)
+
 # Loop
 while True:
     # Get latest trades and update DB
-    last_trades = btceapi.getTradeHistory(pair, count=2)
+    last_trades = btceapi.getTradeHistory(pair, count=100)
     for t in last_trades:
         time = dt_timestamp(t.date)
         working_dataset.update(time, t.price)

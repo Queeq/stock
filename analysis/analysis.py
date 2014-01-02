@@ -384,25 +384,11 @@ class AveragesAnalytics(object):
 
 
     """
-    def __init__(self, res, fee, algo, av_obj, data_obj, av_periods, av_pairs, sar_obj):
+    def __init__(self, res, fee, algo):
         self.resolution = res
         self.fee = float(fee)
         self.algorithm = int(algo)
         self.startsum = 100
-        self.avdata = av_obj
-        self.data = data_obj
-        self.sar = sar_obj
-
-        self.ma_variants = ('simple', 'exp')
-        self.current_sum = {}
-        self.end_sum = {}
-        self.profit = {}
-        self.transactions = {}
-
-        self.minimum_profit = {}
-        self.average_profit = {}
-        self.maximum_profit = {}
-
         # Stats
         self.biggest_win = {}
         self.biggest_loss = {}
@@ -419,6 +405,22 @@ class AveragesAnalytics(object):
         self.last_buy_trade = {}
         self.last_sell_trade = {}
 
+
+    # Backtesting sequence
+    def backtest(self, av_obj, data_obj, av_periods, av_pairs, sar_obj):
+        self.avdata = av_obj
+        self.data = data_obj
+        self.sar = sar_obj
+
+        self.ma_variants = ('simple', 'exp')
+        self.current_sum = {}
+        self.end_sum = {}
+        self.profit = {}
+        self.transactions = {}
+
+        self.minimum_profit = {}
+        self.average_profit = {}
+        self.maximum_profit = {}
 
         # For both SMA and EMA variants, do...
         for ma in self.ma_variants:
@@ -534,6 +536,8 @@ class AveragesAnalytics(object):
             print ("%s %s profit/lost: min %.2f%% av %.2f%% max %.2f%%" % (self.resolution, ma, self.minimum_profit[ma], self.average_profit[ma], self.maximum_profit[ma]))
 
         # end ma type loop
+
+    # end backtest function
 
 
     # Decision on whether to buy or sell

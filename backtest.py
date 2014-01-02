@@ -166,8 +166,8 @@ for index, time in enumerate(discrete_data[p_res].time):
 
 analytics = {}
 for res_name in resolutions_conf.keys():
-    analytics[res_name] = AveragesAnalytics(res_name, args.fee, args.algorithm, av[res_name],
-        discrete_data[res_name], av_periods, av_pairs, SARs[res_name])
+    analytics[res_name] = AveragesAnalytics(res_name, args.fee, args.algorithm)
+    analytics[res_name].backtest(av[res_name], discrete_data[res_name], av_periods, av_pairs, SARs[res_name])
     print ("")
 
 if args.do_plot:
