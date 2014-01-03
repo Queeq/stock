@@ -547,12 +547,21 @@ class AveragesAnalytics(object):
         action - indicates desired action
         Function approves or discards it
         """
+
+        # Algorithm #3 common calculations
+        if self.algorithm == 3:
+            threshold_buy = 0.25
+            threshold_sell = 0.25
+            # Relative difference between fast and slow MAs
+            ma_dif = 100 * (fast_ma - slow_ma) / ((fast_ma + slow_ma)/2)
+
+        #### Action decisions
         if action == 'buy':
             """
-            Algorithms #1, #2 and #3.
+            Algorithms #1 and #2.
             Buy on fast crossing slow upwards
             """
-            if self.algorithm == 1 or self.algorithm == 2 or self.algorithm == 3:
+            if self.algorithm == 1 or self.algorithm == 2:
                 if fast_ma < slow_ma:
                     # Check if fast crosses slow downwards
                     self.buy_allowed = True
@@ -561,6 +570,19 @@ class AveragesAnalytics(object):
                     return True
                 else:
                     return False
+            """
+            Algorithm #3
+            Use threshold to eliminate false-positives
+            on low-volatility market where crosses up and
+            down could be too close.
+            Buy when difference between MAs is larger then threshold.
+            """
+            if self.algorithm == 3:
+                if ma_dif > threshold_buy:
+                    return True
+                else:
+                    return False
+
 
         elif action == 'sell':
             """
@@ -583,14 +605,14 @@ class AveragesAnalytics(object):
                 else:
                     return False
             """
-            Algorithm #3.
-            Sell on either fast < slow or SAR trend is down
-            whatever comes first. Prevent instant buy after sell
-            by setting buy_allowed flag to false
+            Algorithm #3
+            Use threshold to eliminate false-positives
+            on low-volatility market where crosses up and
+            down could be too close.
+            Sell when difference between MAs is larger then threshold.
             """
             if self.algorithm == 3:
-                if fast_ma < slow_ma or sar_trend < 0:
-                    self.buy_allowed = False
+                if abs(ma_dif) > threshold_sell:
                     return True
                 else:
                     return False

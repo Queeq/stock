@@ -42,9 +42,9 @@ aparser.add_argument('-p', '--period', dest='timedelta', nargs=2, metavar=('INTE
 aparser.add_argument('-s', '--start', dest='startdate', help='Date to start analysis from. Format: dd.mm.yy')
 aparser.add_argument('-e', '--end', dest='enddate', help='Date to finish analysis at. Format: dd.mm.yy')
 aparser.add_argument('-a', '--algorithm', dest='algorithm', help="""Algorithm to use.
-1: MA crossings (default)
-2: MA crossings with simple SAR (buy on crossing, sell on crossing + SAR trend down
-3: MA crossings with advanced SAR (see analysis/analysis.py decision()""")
+1: MA crossings (default).
+2: MA crossings with simple SAR (buy on crossing, sell on crossing + SAR trend down).
+3: MA crossings with thresholds (see analysis/analysis.py decision()).""")
 aparser.add_argument('--no-plot', dest='do_plot', action='store_false', help='Do not draw plots, just show text stats')
 aparser.set_defaults(do_plot=True, fee=0.002, algorithm=1)
 args = aparser.parse_args()
