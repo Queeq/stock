@@ -21,6 +21,9 @@ res_name = config['bot']['resolution']
 res_value = resolutions_convert(res_name)[res_name]
 
 pair = 'btc_usd'
+fee = btceapi.getTradeFee(pair)
+
+print("Current fee is", fee)
 
 # Def buy/sell simulation
     # Calculate and log amounts
@@ -47,7 +50,6 @@ working_dataset.update(time, price)
 for i, time in enumerate(working_dataset.time):
     print (dt.datetime.fromtimestamp(time), working_dataset.price[i])
 
-fee = btceapi.getTradeFee(pair)
 # Analytics object
 act = AveragesAnalytics(res_name, fee, 2)
 
