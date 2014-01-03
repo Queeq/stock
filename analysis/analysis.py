@@ -117,11 +117,12 @@ class Data(object):
         else:
             # Remove last element if inteval end not passed
             element_n = -1
-            # Detect if high or low changed
-            if price > self.current_high:
-                self.current_high = price
-            if price < self.current_low:
-                self.current_low = price
+            # Detect if high or low changed by new data
+            if time > self.time[-1]:
+                if price > self.current_high:
+                    self.current_high = price
+                if price < self.current_low:
+                    self.current_low = price
 
         # If arrived data is newer - write
         if time > self.time[-1]:
