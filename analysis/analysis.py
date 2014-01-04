@@ -408,10 +408,13 @@ class AveragesAnalytics(object):
 
 
     # Backtesting sequence
-    def backtest(self, av_obj, data_obj, av_periods, av_pairs, sar_obj):
+    def backtest(self, av_obj, data_obj, av_periods, av_pairs, sar_obj, threshold_buy, threshold_sell):
         self.avdata = av_obj
         self.data = data_obj
         self.sar = sar_obj
+
+        self.t_buy = float(threshold_buy)
+        self.t_sell = float(threshold_sell)
 
         self.ma_variants = ('simple', 'exp')
         self.current_sum = {}
@@ -550,8 +553,6 @@ class AveragesAnalytics(object):
 
         # Algorithm #3 common calculations
         if self.algorithm == 3:
-            threshold_buy = 0.25
-            threshold_sell = 0.25
             # Relative difference between fast and slow MAs
             ma_dif = 100 * (fast_ma - slow_ma) / ((fast_ma + slow_ma)/2)
 
@@ -578,7 +579,7 @@ class AveragesAnalytics(object):
             Buy when difference between MAs is larger then threshold.
             """
             if self.algorithm == 3:
-                if ma_dif > threshold_buy:
+                if ma_dif > self.t_buy:
                     return True
                 else:
                     return False
@@ -612,7 +613,7 @@ class AveragesAnalytics(object):
             Sell when difference between MAs is larger then threshold.
             """
             if self.algorithm == 3:
-                if ma_dif < -threshold_sell:
+                if ma_dif < -self.t_sell:
                     return True
                 else:
                     return False

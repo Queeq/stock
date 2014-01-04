@@ -45,8 +45,10 @@ aparser.add_argument('-a', '--algorithm', dest='algorithm', help="""Algorithm to
 1: MA crossings (default).
 2: MA crossings with simple SAR (buy on crossing, sell on crossing + SAR trend down).
 3: MA crossings with thresholds (see analysis/analysis.py decision()).""")
+aparser.add_argument('-tb', '--threshold-buy', dest='threshold_buy', help='Relative difference between MAs to generate buy signal. Default 0.25.')
+aparser.add_argument('-ts', '--threshold-sell', dest='threshold_sell', help='Relative difference between MAs to generate sell signal. Default 0.25.')
 aparser.add_argument('--no-plot', dest='do_plot', action='store_false', help='Do not draw plots, just show text stats')
-aparser.set_defaults(do_plot=True, fee=0.002, algorithm=1)
+aparser.set_defaults(do_plot=True, fee=0.002, algorithm=1, threshold_buy=0.25, threshold_sell=0.25)
 args = aparser.parse_args()
 
 now = int(dt.datetime.now().strftime('%s'))
@@ -167,7 +169,7 @@ for index, time in enumerate(discrete_data[p_res].time):
 analytics = {}
 for res_name in resolutions_conf.keys():
     analytics[res_name] = AveragesAnalytics(res_name, args.fee, args.algorithm)
-    analytics[res_name].backtest(av[res_name], discrete_data[res_name], av_periods, av_pairs, SARs[res_name])
+    analytics[res_name].backtest(av[res_name], discrete_data[res_name], av_periods, av_pairs, SARs[res_name], args.threshold_buy, args.threshold_sell)
     print ("")
 
 if args.do_plot:
@@ -198,8 +200,15 @@ if args.do_plot:
             av_profit = analytics[res_name].average_profit[ma_type]
             max_profit = analytics[res_name].maximum_profit[ma_type]
 
+            # Add thresholds values for algorithm #3
+            if int(args.algorithm) == 3:
+                thresholds_str = " Thresholds: buy %s, sell %s" % (args.threshold_buy, args.threshold_sell)
+            else:
+                thresholds_str = ""
+
             plt.subplot2grid((plot_rows, plot_columns), (0, type_index))
-            plt.title("%s\n%s %s. Algorithm #%s\nMin: %.2f Av: %.2f Max: %.2f" % (timeperiod_str, res_name, ma_type, args.algorithm, min_profit, av_profit, max_profit))
+            plt.title("%s\n%s %s. Algorithm #%s%s\nMin: %.2f Av: %.2f Max: %.2f"
+                      % (timeperiod_str, res_name, ma_type, args.algorithm, thresholds_str, min_profit, av_profit, max_profit))
             for (x, y), value in np.ndenumerate(plot_data):
                 if plot_mask[x, y] == False:
                     plt.text(x + 0.5, y + 0.5, '%.2f%%\n(%d, %d)' % (value, x, y), horizontalalignment='center', verticalalignment='center', fontsize=fontsize)
