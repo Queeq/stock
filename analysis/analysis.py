@@ -612,7 +612,7 @@ class AveragesAnalytics(object):
             Sell when difference between MAs is larger then threshold.
             """
             if self.algorithm == 3:
-                if abs(ma_dif) > threshold_sell:
+                if ma_dif < -threshold_sell:
                     return True
                 else:
                     return False
