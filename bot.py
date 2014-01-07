@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import argparse
 import configparser
 import datetime as dt
 from time import sleep
@@ -19,6 +20,14 @@ slow = int(config['bot']['slow'])
 stop_loss = float(config['bot']['stop_loss'])
 res_name = config['bot']['resolution']
 res_value = resolutions_convert(res_name)[res_name]
+
+# Parse arguments
+aparser = argparse.ArgumentParser()
+aparser.add_argument('-r', '--real', dest='real_trading', action="store_true", help='Activate real trading')
+aparser.set_defaults(real_trading=False)
+args = aparser.parse_args()
+
+keyfile = "keyfile"
 
 # One connection for everything
 conn = btceapi.common.BTCEConnection()
@@ -60,7 +69,26 @@ class ActionTimeout(object):
     # Get account info
     # Check if enough USD
     # Compare and update analytics object (give warning on different values)
+class Trading(object):
+    """
+    Class to check account status and act upon that
+    """
+    def __init__(self, connection, keyfile):
+        self.conn = connection
+        self.handler = btceapi.KeyHandler(keyfile)
+        self.key = self.handler.getKeys()[0]
+        self.api = btceapi.TradeAPI(self.key, self.handler)
+        self.acc_info = self.api.getInfo()
 
+        print("Info rights:", self.acc_info.info_rights)
+        print("Trade rights:", self.acc_info.trade_rights)
+        usd = self.acc_info.balance_usd
+        btc = self.acc_info.balance_btc
+
+
+if args.real_trading:
+    # Activate trading object
+    t = Trading(conn, keyfile)
 
 # Calculate start time for building average
 start_time = now() - res_value * slow
@@ -93,11 +121,14 @@ sell_timeout = ActionTimeout("sell", res_value)
 
 # Loop
 while True:
-    # Get latest trades and update DB
     try:
+        # Get latest trades and update DB
         last_trades = btceapi.getTradeHistory(pair, count=100, connection=conn)
-    except ValueError:
-        print("getTradeHistory failed. Skipping actions")
+    except Exception as ex:
+        # Ignore all exceptions, just print them out and keep it on.
+        print(dt_date(now()), "getTradeHistory failed. Skipping actions and reopening connection.")
+        # Try to open new connection
+        conn = btceapi.common.BTCEConnection()
     else:
         for t in last_trades:
             time = dt_timestamp(t.date)
@@ -131,7 +162,7 @@ while True:
             # If able to buy and buy timeout passed - act
             if act.current_sum[0] > 0 \
               and now() > buy_timeout.trigger_at:
-                print("===========%s Buying for %.2f==========="
+                print("===========%s Simulation buying for %.2f==========="
                     % (dt_date(time), price))
                 act.buy_sell_sim(price, 'buy', act.current_sum)
             # TODO: Calculate and log amounts
@@ -145,7 +176,7 @@ while True:
             # If able to sell and sell timeout passed - act
             if act.current_sum[1] > 0 \
               and now() > sell_timeout.trigger_at:
-                print("===========%s Selling for %.2f==========="
+                print("===========%s Simulation selling for %.2f==========="
                     % (dt_date(time), price))
                 act.buy_sell_sim(price, 'sell', act.current_sum)
                 # TODO: Calculate and log amounts
