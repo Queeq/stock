@@ -5,6 +5,7 @@ import configparser
 import datetime as dt
 from time import sleep
 from sys import exit
+from os import path
 
 import btceapi
 
@@ -20,6 +21,7 @@ slow = int(config['bot']['slow'])
 stop_loss = float(config['bot']['stop_loss'])
 res_name = config['bot']['resolution']
 res_value = resolutions_convert(res_name)[res_name]
+trading_sum = float(config['bot']['trading_sum'])
 
 # Parse arguments
 aparser = argparse.ArgumentParser()
@@ -27,7 +29,9 @@ aparser.add_argument('-r', '--real', dest='real_trading', action="store_true", h
 aparser.set_defaults(real_trading=False)
 args = aparser.parse_args()
 
+real_trading = args.real_trading
 keyfile = "keyfile"
+keyfile = path.abspath(keyfile)
 
 # One connection for everything
 conn = btceapi.common.BTCEConnection()
@@ -65,9 +69,7 @@ class ActionTimeout(object):
 
 
 # TODO:
-# Def real buy/sell
-    # Get account info
-    # Check if enough USD
+    # Compare trading sum with total available sum
     # Compare and update analytics object (give warning on different values)
 class Trading(object):
     """
@@ -76,19 +78,46 @@ class Trading(object):
     def __init__(self, connection, keyfile):
         self.conn = connection
         self.handler = btceapi.KeyHandler(keyfile)
-        self.key = self.handler.getKeys()[0]
+        try:
+            self.key = self.handler.getKeys()[0]
+        except IndexError:
+            print("Error: something's wrong with keyfile. Looks like it's empty")
+            exit(1)
+
         self.api = btceapi.TradeAPI(self.key, self.handler)
         self.acc_info = self.api.getInfo()
 
-        print("Info rights:", self.acc_info.info_rights)
-        print("Trade rights:", self.acc_info.trade_rights)
-        usd = self.acc_info.balance_usd
-        btc = self.acc_info.balance_btc
+        self.usd = self.acc_info.balance_usd
+        self.btc = self.acc_info.balance_btc
+
+        if self.usd == 0 and self.btc == 0:
+            print("Not enough funds for real trading. Activating simulation")
+            real_trading = False
+
+    def prices(self):
+        """
+        Returns tuple of closest ask/bid prices (ask, bid)
+        """
+        asks, bids = btceapi.getDepth(pair)
+        return (asks[0][0], bids[0][0])
+
+    def closest_ask(self):
+        return self.prices()[0]
+
+    def closest_bid(self):
+        return self.prices()[0]
+
+    def buy(self):
+        # TODO: calculate amounts based on trading sum
+        result = self.api.trade(pair, "buy", price, usd, self.conn)
 
 
-if args.real_trading:
+if real_trading:
     # Activate trading object
-    t = Trading(conn, keyfile)
+    trade = Trading(conn, keyfile)
+
+trade.prices()
+exit(0)
 
 # Calculate start time for building average
 start_time = now() - res_value * slow
@@ -126,7 +155,7 @@ while True:
         last_trades = btceapi.getTradeHistory(pair, count=100, connection=conn)
     except Exception as ex:
         # Ignore all exceptions, just print them out and keep it on.
-        print(dt_date(now()), "getTradeHistory failed. Skipping actions and reopening connection.")
+        #print(dt_date(now()), "getTradeHistory failed. Skipping actions and reopening connection.\nThe error was:", ex)
         # Try to open new connection
         conn = btceapi.common.BTCEConnection()
     else:
@@ -152,7 +181,6 @@ while True:
             % (fast_value, slow_value, sar.sar[-1], trend))
         '''
 
-        #### Simulation ####
         # If buy signal
         if act.decision('buy', fast_value, slow_value, trend):
             # Calculate timeouts
@@ -160,11 +188,16 @@ while True:
             sell_timeout.update("buy")
 
             # If able to buy and buy timeout passed - act
+            # Simulation part
             if act.current_sum[0] > 0 \
               and now() > buy_timeout.trigger_at:
                 print("===========%s Simulation buying for %.2f==========="
                     % (dt_date(time), price))
                 act.buy_sell_sim(price, 'buy', act.current_sum)
+
+            # Real part
+            if real_trading and trade:
+                pass
             # TODO: Calculate and log amounts
 
         # If sell signal
