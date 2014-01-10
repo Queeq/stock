@@ -3,3 +3,4 @@ class SharedData(object):
         self.trading_sum = trading_sum
         self.real_trading = real_trading
         self.conn = connection
+        self.price = 0
