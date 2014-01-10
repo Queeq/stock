@@ -37,7 +37,7 @@ keyfile = path.abspath(keyfile)
 conn = btceapi.common.BTCEConnection()
 
 pair = 'btc_usd'
-fee = float(btceapi.getTradeFee(pair, connection=conn))
+fee = btceapi.getTradeFee(pair, connection=conn)
 # API returns fee in percent. Get absolute value
 fee /= 100
 
@@ -75,8 +75,7 @@ class Trading(object):
     """
     Class to check account status and act upon that
     """
-    def __init__(self, connection, keyfile):
-        self.conn = connection
+    def __init__(self, keyfile):
         self.handler = btceapi.KeyHandler(keyfile)
         try:
             self.key = self.handler.getKeys()[0]
@@ -92,11 +91,31 @@ class Trading(object):
             print("Not enough funds for real trading. Activating simulation")
             real_trading = False
 
+        # Trade all available money on the following condition
+        if trading_sum >= self.usd or trading_sum <= 0:
+            print("Trading all available money of %s!" % self.usd)
+            self.trade_all = True
+        else:
+            self.trade_all = False
+
     def update_balance(self):
         self.acc_info = self.api.getInfo()
 
         self.usd = self.acc_info.balance_usd
         self.btc = self.acc_info.balance_btc
+
+    def min_amount(self, trade_type, price=0):
+        """
+        Returns minimum amount allowed to trade
+        """
+        btc_min_amount = 0.01
+        if trade_type == "buy":
+            usd_min_amount = btc_min_amount * price
+            print("Min amount", usd_min_amount, "USD")
+            return usd_min_amount
+        else:
+            print("Min amount", btc_min_amount, "BTC")
+            return btc_min_amount
 
     def prices(self):
         """
@@ -106,12 +125,15 @@ class Trading(object):
         return (asks[0][0], bids[0][0])
 
     def lowest_ask(self):
-        return float(self.prices()[0])
+        return self.prices()[0]
 
     def highest_bid(self):
-        return float(self.prices()[0])
+        return self.prices()[0]
 
     def buy(self):
+        if self.trade_all:
+            trading_sum = self.usd
+
         hi_bid = self.highest_bid()
         # Buy for sure - set buy price 0.1% higher than highest bid
         #price = hi_bid + hi_bid*0.001
@@ -120,10 +142,9 @@ class Trading(object):
         sum_to_buy = trading_sum/price
         # Minus fee
         sum_to_buy -= sum_to_buy * fee
-        print("--------------", sum_to_buy, trading_sum, price)
         print(dt_date(now()), "Placing BUY order: %f BTC for %f USD. Price %f"
             % (sum_to_buy, trading_sum, price))
-        result = self.api.trade(pair, "buy", price, sum_to_buy, self.conn)
+        result = self.api.trade(pair, "buy", price, sum_to_buy, conn)
         print(result.received, result.remains, result.order_id)
         self.update_balance()
 
@@ -132,20 +153,27 @@ class Trading(object):
         # Sell for sure - set sell price 0.1% lower than lowest ask
         #price = lo_ask - lo_ask*0.001
         price = lo_ask + 100
-        # Calculate amounts based on trading sum
-        sum_to_sell = trading_sum/price
+
+        # Calculate amounts
+        if self.trade_all:
+            sum_to_sell = self.btc
+        else:
+            sum_to_sell = trading_sum/price
+            if sum_to_sell > self.btc:
+                sum_to_sell = self.btc
+
         # Minus fee
         sum_to_sell -= sum_to_sell * fee
         print(dt_date(now()), "Placing BUY order: %f BTC for %f USD. Price %f"
             % (sum_to_sell, trading_sum, price))
-        result = self.api.trade(pair, "sell", price, sum_to_sell, self.conn)
+        result = self.api.trade(pair, "sell", price, sum_to_sell, conn)
         print(result.received, result.remains, result.order_id)
         self.update_balance()
 
 
 if real_trading:
     # Activate trading object
-    trade = Trading(conn, keyfile)
+    trade = Trading(keyfile)
     trade.prices()
 
 # Calculate start time for building average
@@ -225,7 +253,7 @@ while True:
                 act.buy_sell_sim(price, 'buy', act.current_sum)
 
             # Real part
-            if real_trading and trade.usd > 0 \
+            if real_trading and trade.usd > trade.min_amount("buy", price) \
               and now() > buy_timeout.trigger_at:
                 trade.buy()
             # TODO: Calculate and log amounts
@@ -246,7 +274,7 @@ while True:
                 print("Current sum is", act.current_sum[0])
 
             # Real part
-            if real_trading and trade.btc > 0 \
+            if real_trading and trade.btc > trade.min_amount("sell") \
               and now() > sell_timeout.trigger_at:
                 trade.sell()
 
