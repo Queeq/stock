@@ -8,36 +8,41 @@ from sys import exit
 from os import path
 
 import btceapi
+from decimal import Decimal
 
 from common.basic import *
 from common import datadownload as dd
 from analysis.analysis import *
+import bot.data
 
 # Get configuration from ini
 config = configparser.ConfigParser()
 config.read('config.ini')
 fast = int(config['bot']['fast'])
 slow = int(config['bot']['slow'])
-stop_loss = float(config['bot']['stop_loss'])
+stop_loss = config['bot']['stop_loss']
 res_name = config['bot']['resolution']
 res_value = resolutions_convert(res_name)[res_name]
-trading_sum = float(config['bot']['trading_sum'])
+# Use Decimal as API returns all values as Decimal
+trading_sum = Decimal(config['bot']['trading_sum'])
 
 # Parse arguments
 aparser = argparse.ArgumentParser()
-aparser.add_argument('-r', '--real', dest='real_trading', action="store_true", help='Activate real trading')
+aparser.add_argument('-r', '--real', dest='real_trading', action="store_true",
+                     help='Activate real trading')
 aparser.set_defaults(real_trading=False)
 args = aparser.parse_args()
 
-real_trading = args.real_trading
 keyfile = "keyfile"
 keyfile = path.abspath(keyfile)
 
 # One connection for everything
-conn = btceapi.common.BTCEConnection()
+# Init shared data object
+shared_data = bot.data.SharedData(trading_sum, args.real_trading,
+                                  btceapi.common.BTCEConnection())
 
 pair = 'btc_usd'
-fee = btceapi.getTradeFee(pair, connection=conn)
+fee = btceapi.getTradeFee(pair, connection=shared_data.conn)
 # API returns fee in percent. Get absolute value
 fee /= 100
 
@@ -69,13 +74,12 @@ class ActionTimeout(object):
 
 
 # TODO:
-    # Compare trading sum with total available sum
     # Compare and update analytics object (give warning on different values)
 class Trading(object):
     """
     Class to check account status and act upon that
     """
-    def __init__(self, keyfile):
+    def __init__(self, keyfile, shared_data):
         self.handler = btceapi.KeyHandler(keyfile)
         try:
             self.key = self.handler.getKeys()[0]
@@ -89,10 +93,10 @@ class Trading(object):
         # Simplest possible check. Rely upon API for everything else
         if self.usd == 0 and self.btc == 0:
             print("Not enough funds for real trading. Activating simulation")
-            real_trading = False
+            shared_data.real_trading = False
 
         # Trade all available money on the following condition
-        if trading_sum >= self.usd or trading_sum <= 0:
+        if shared_data.trading_sum >= self.usd or shared_data.trading_sum <= 0:
             print("Trading all available money of %s!" % self.usd)
             self.trade_all = True
         else:
@@ -130,25 +134,25 @@ class Trading(object):
     def highest_bid(self):
         return self.prices()[0]
 
-    def buy(self):
+    def buy(self, shared_data):
         if self.trade_all:
-            trading_sum = self.usd
+            shared_data.trading_sum = self.usd
 
         hi_bid = self.highest_bid()
         # Buy for sure - set buy price 0.1% higher than highest bid
         #price = hi_bid + hi_bid*0.001
         price = hi_bid - 100
         # Calculate amounts based on trading sum
-        sum_to_buy = trading_sum/price
+        sum_to_buy = shared_data.trading_sum/price
         # Minus fee
         sum_to_buy -= sum_to_buy * fee
         print(dt_date(now()), "Placing BUY order: %f BTC for %f USD. Price %f"
-            % (sum_to_buy, trading_sum, price))
-        result = self.api.trade(pair, "buy", price, sum_to_buy, conn)
+            % (sum_to_buy, shared_data.trading_sum, price))
+        result = self.api.trade(pair, "buy", price, sum_to_buy, shared_data.conn)
         print(result.received, result.remains, result.order_id)
         self.update_balance()
 
-    def sell(self):
+    def sell(self, shared_data):
         lo_ask = self.lowest_ask()
         # Sell for sure - set sell price 0.1% lower than lowest ask
         #price = lo_ask - lo_ask*0.001
@@ -158,22 +162,22 @@ class Trading(object):
         if self.trade_all:
             sum_to_sell = self.btc
         else:
-            sum_to_sell = trading_sum/price
+            sum_to_sell = shared_data.trading_sum/price
             if sum_to_sell > self.btc:
                 sum_to_sell = self.btc
 
         # Minus fee
         sum_to_sell -= sum_to_sell * fee
         print(dt_date(now()), "Placing BUY order: %f BTC for %f USD. Price %f"
-            % (sum_to_sell, trading_sum, price))
-        result = self.api.trade(pair, "sell", price, sum_to_sell, conn)
+            % (sum_to_sell, shared_data.trading_sum, price))
+        result = self.api.trade(pair, "sell", price, sum_to_sell, shared_data.conn)
         print(result.received, result.remains, result.order_id)
         self.update_balance()
 
 
-if real_trading:
+if shared_data.real_trading:
     # Activate trading object
-    trade = Trading(keyfile)
+    trade = Trading(keyfile, shared_data)
     trade.prices()
 
 # Calculate start time for building average
@@ -209,12 +213,14 @@ sell_timeout = ActionTimeout("sell", res_value)
 while True:
     try:
         # Get latest trades and update DB
-        last_trades = btceapi.getTradeHistory(pair, count=100, connection=conn)
+        last_trades = btceapi.getTradeHistory(pair, count=100, connection=shared_data.conn)
     except Exception as ex:
         # Ignore all exceptions, just print them out and keep it on.
-        #print(dt_date(now()), "getTradeHistory failed. Skipping actions and reopening connection.\nThe error was:", ex)
+        #print(dt_date(now()),
+        #      "getTradeHistory failed. Skipping actions and reopening connection.\nThe error was:",
+        #      ex)
         # Try to open new connection
-        conn = btceapi.common.BTCEConnection()
+        shared_data.conn = btceapi.common.BTCEConnection()
     else:
         for t in last_trades:
             time = dt_timestamp(t.date)
@@ -253,9 +259,9 @@ while True:
                 act.buy_sell_sim(price, 'buy', act.current_sum)
 
             # Real part
-            if real_trading and trade.usd > trade.min_amount("buy", price) \
+            if shared_data.real_trading and trade.usd > trade.min_amount("buy", price) \
               and now() > buy_timeout.trigger_at:
-                trade.buy()
+                trade.buy(shared_data)
             # TODO: Calculate and log amounts
 
         # If sell signal
@@ -265,6 +271,7 @@ while True:
             sell_timeout.update("sell")
 
             # If able to sell and sell timeout passed - act
+            # Simulation part
             if act.current_sum[1] > 0 \
               and now() > sell_timeout.trigger_at:
                 print("===========%s Simulation selling for %.2f==========="
@@ -274,9 +281,9 @@ while True:
                 print("Current sum is", act.current_sum[0])
 
             # Real part
-            if real_trading and trade.btc > trade.min_amount("sell") \
+            if shared_data.real_trading and trade.btc > trade.min_amount("sell") \
               and now() > sell_timeout.trigger_at:
-                trade.sell()
+                trade.sell(shared_data)
 
     # End main try-else block
 
