@@ -4,3 +4,4 @@ example-plots/
 *.pyc
 __pycache__
 keyfile
+.*.swp
