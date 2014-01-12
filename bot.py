@@ -55,7 +55,7 @@ print("Tick size", res_name)
 class ActionTimeout(object):
     """
     Don't instantly act after signal is generated.
-    Wait 1/2 of period from last signal change to
+    Wait 1/6 of period from last signal change to
     confirm it and actually do what we are supposed to do.
     """
     def __init__(self, action, res_value):
@@ -71,7 +71,8 @@ class ActionTimeout(object):
         # If timer was reset and signal is ours now - set new trigger time
         elif signal == self.action \
           and self.trigger_at == float("inf"):
-            self.trigger_at = now() + self.res_value/2
+            # Here is where the actual timeout is set
+            self.trigger_at = now() + self.res_value/6
             print("Set", self.action, "timeout to", dt_date(self.trigger_at))
 
 
@@ -185,10 +186,11 @@ class Trading(object):
 
         # Minus fee
         sum_to_sell -= sum_to_sell * fee
+        sum_to_get = sum_to_sell * price
         print(dt_date(now()),
             "____Placing SELL order: %f BTC for %f USD. Price %f____"
             % (sum_to_sell, shared_data.trading_sum, price))
-        result = self.api.trade(pair, "sell", price, sum_to_sell, shared_data.conn)
+        result = self.api.trade(pair, "sell", price, sum_to_get, shared_data.conn)
         print(result.received, result.remains, result.order_id)
         self.update_balance()
         self.next_action = "buy"
