@@ -39,7 +39,8 @@ keyfile = path.abspath(keyfile)
 # One connection for everything
 # Init shared data object
 shared_data = bot.data.SharedData(trading_sum, args.real_trading,
-                                  btceapi.common.BTCEConnection())
+                                  btceapi.common.BTCEConnection(),
+                                  )
 
 pair = 'btc_usd'
 fee = btceapi.getTradeFee(pair, connection=shared_data.conn)
@@ -91,6 +92,13 @@ class Trading(object):
         self.api = btceapi.TradeAPI(self.key, self.handler)
         self.update_balance()
 
+        # Trade all available money on the following condition
+        if shared_data.trading_sum >= self.usd or shared_data.trading_sum <= 0:
+            print("Trading all available money")
+            self.trade_all = True
+        else:
+            self.trade_all = False
+
         # Check if we are able to trade at all with current sums
         if self.usd < shared_data.trading_sum \
           and self.btc < self.min_amount("sell", shared_data.price):
@@ -98,19 +106,15 @@ class Trading(object):
             shared_data.real_trading = False
         else:
             # Define initial action. Buy has priority.
-            # If enough USD - buy
-            if self.usd >= shared_data.trading_sum:
+            # If enough USD
+            if self.usd >= shared_data.trading_sum \
+              and self.usd >= self.min_amount("buy", shared_data.price):
+                print("Looking to buy")
                 self.next_action = "buy"
             # Else, if enough BTC - sell
             elif self.btc >= self.min_amount("sell", shared_data.price):
+                print("Looking to sell")
                 self.next_action = "sell"
-
-        # Trade all available money on the following condition
-        if shared_data.trading_sum >= self.usd or shared_data.trading_sum <= 0:
-            print("Trading all available money of %s!" % self.usd)
-            self.trade_all = True
-        else:
-            self.trade_all = False
 
     def update_balance(self):
         self.acc_info = self.api.getInfo()
@@ -190,10 +194,6 @@ class Trading(object):
         self.next_action = "buy"
 
 
-if shared_data.real_trading:
-    # Activate trading object
-    trade = Trading(keyfile, shared_data)
-
 # Calculate start time for building average
 start_time = now() - res_value * slow
 #print("Lookback time:", dt.datetime.fromtimestamp(start_time))
@@ -208,6 +208,13 @@ for value in new_data:
 
 # Explicitly update dataset with last values
 working_dataset.update(time, price)
+
+# Record last price
+shared_data.price = working_dataset.price[-1]
+
+if shared_data.real_trading:
+    # Activate trading object
+    trade = Trading(keyfile, shared_data)
 
 #for i, time in enumerate(working_dataset.time):
 #    print (dt.datetime.fromtimestamp(time), working_dataset.price[i])
