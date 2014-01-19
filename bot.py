@@ -187,6 +187,8 @@ class Trading(object):
         # Minus fee
         sum_to_sell -= sum_to_sell * fee
         sum_to_get = sum_to_sell * price
+        # Substract 0.001 to overcome API error
+        sum_to_get = sum_to_sell * price - 0.001
         print(dt_date(now()),
             "____Placing SELL order: %f BTC for %f USD. Price %f____"
             % (sum_to_sell, shared_data.trading_sum, price))
