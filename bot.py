@@ -189,7 +189,7 @@ class Trading(object):
         sum_to_get = sum_to_sell * price
         print(dt_date(now()),
             "____Placing SELL order: %f BTC for %f USD. Price %f____"
-            % (sum_to_sell, shared_data.trading_sum, price))
+            % (sum_to_sell, sum_to_get, price))
         result = self.api.trade(pair, "sell", price, sum_to_get, shared_data.conn)
         print(result.received, result.remains, result.order_id)
         self.update_balance()
