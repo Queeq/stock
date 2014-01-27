@@ -91,7 +91,7 @@ class Trading(object):
             exit(1)
 
         self.api = btceapi.TradeAPI(self.key, self.handler)
-        self.update_balance()
+        self.update_balance(prnt=True)
 
         # Trade all available money on the following condition
         if shared_data.trading_sum >= self.usd or shared_data.trading_sum <= 0:
@@ -117,12 +117,13 @@ class Trading(object):
                 print("Looking to sell")
                 self.next_action = "sell"
 
-    def update_balance(self):
+    def update_balance(self, prnt=False):
         self.acc_info = self.api.getInfo()
 
         self.usd = self.acc_info.balance_usd
         self.btc = self.acc_info.balance_btc
-        print("Current balance: %s USD, %s BTC\n" % (self.usd, self.btc))
+        if prnt:
+            print("Current balance: %s USD, %s BTC\n" % (self.usd, self.btc))
 
     def min_amount(self, trade_type, price=0):
         """
@@ -159,7 +160,7 @@ class Trading(object):
         price = hi_bid + hi_bid*Decimal(0.001)
         #price = hi_bid - 100 # For debug
         # Calculate amounts based on trading sum
-        sum_to_buy = shared_data.trading_sum/price
+        sum_to_buy = round(shared_data.trading_sum/price, 8)
         # Minus fee
         sum_to_buy -= sum_to_buy * fee
         print(dt_date(now()),
@@ -167,7 +168,7 @@ class Trading(object):
             % (sum_to_buy, shared_data.trading_sum, price))
         result = self.api.trade(pair, "buy", price, sum_to_buy, shared_data.conn)
         print(result.received, result.remains, result.order_id)
-        self.update_balance()
+        self.update_balance(prnt=True)
         self.next_action = "sell"
 
     def sell(self, shared_data):
@@ -186,15 +187,16 @@ class Trading(object):
 
         # Minus fee
         sum_to_sell -= sum_to_sell * fee
-        sum_to_get = sum_to_sell * price
+        sum_to_get = sum_to_sell*price
+        #sum_to_get -= sum_to_get * fee
         # Substract 0.001 to overcome API error
-        sum_to_get = sum_to_sell * price - Decimal(0.0001)
+        #sum_to_get = sum_to_sell * price - Decimal(0.1)
         print(dt_date(now()),
             "____Placing SELL order: %f BTC for %f USD. Price %f____"
             % (sum_to_sell, sum_to_get, price))
-        result = self.api.trade(pair, "sell", price, sum_to_get, shared_data.conn)
+        result = self.api.trade(pair, "sell", price, sum_to_sell, shared_data.conn)
         print(result.received, result.remains, result.order_id)
-        self.update_balance()
+        self.update_balance(prnt=True)
         self.next_action = "buy"
 
 
@@ -276,6 +278,8 @@ while True:
             buy_timeout.update("buy")
             sell_timeout.update("buy")
 
+            trade.update_balance()
+
             # If able to buy and buy timeout passed - act
             # Simulation part
             if act.current_sum[0] > 0 \
@@ -297,6 +301,8 @@ while True:
             # Calculate timeouts
             buy_timeout.update("sell")
             sell_timeout.update("sell")
+
+            trade.update_balance()
 
             # If able to sell and sell timeout passed - act
             # Simulation part
